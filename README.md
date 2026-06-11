@@ -1,16 +1,63 @@
-# React + Vite
+# CropMind 🌱
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+CropMind is an AI-powered crop advisory web application developed as part of the FSD Internship Project.
 
-Currently, two official plugins are available:
+The platform aims to help farmers and field supervisors receive quick agricultural guidance through a simple and user-friendly interface.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Project Objective
 
-## React Compiler
+Farmers often face challenges related to crop care, diseases, pest management, and farming practices. CropMind is designed to provide accessible advisory support and simplify decision-making.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Features
 
-## Expanding the ESLint configuration
+* AI-powered crop advisory chatbot
+* Agriculture-related query support
+* Crop care suggestions
+* Simple and responsive interface
+* Conversation history support
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Tech Stack
+
+### Frontend
+
+* React.js
+
+### Backend
+
+* Python (FastAPI)
+
+### Database
+
+* MongoDB Atlas
+
+## Current Progress
+
+### Week 1
+
+* Project idea finalized
+* Project brief submitted
+* Technology stack selected
+
+### Week 2 (In Progress)
+
+* Frontend setup
+* Component creation
+* Responsive layout
+
+## Project Structure
+
+```text
+cropmind-ai/
+├── frontend/
+├── backend/
+├── README.md
+```
+
+## Disclaimer
+
+CropMind is designed to assist users with basic agricultural guidance and does not replace professional agricultural experts. Users should verify important farming decisions with qualified professionals.
+
+## Author
+
+Deepanshi Agarwal
+FSD Internship Project
