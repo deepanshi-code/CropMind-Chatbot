@@ -1,0 +1,1 @@
+After replacing files run: npm install react-router-dom && npm run dev

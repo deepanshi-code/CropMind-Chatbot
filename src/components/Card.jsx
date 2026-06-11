@@ -1,1 +1,1 @@
-export default function Card(){return <div><h3>Feature</h3><p>Crop advisory support</p></div>}
+export default function Card({title,text}){return(<div style={{padding:20,border:"1px solid #ddd",borderRadius:12}}><h3>{title}</h3><p>{text}</p></div>)}

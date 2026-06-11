@@ -1,5 +1,2 @@
-import Navbar from '../components/Navbar'
-import Hero from '../components/Hero'
-import Card from '../components/Card'
-import Footer from '../components/Footer'
-export default function Home(){return <><Navbar/><Hero/><div><Card/><Card/></div><Footer/></>}
+import Navbar from "../components/Navbar";import Hero from "../components/Hero";import Card from "../components/Card";import Footer from "../components/Footer";
+export default function Home(){return(<><Navbar/><Hero/><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(250px,1fr))",gap:20,padding:20}}><Card title="Crop Advisory" text="Ask farming questions"/><Card title="Quick Suggestions" text="Receive guidance"/></div><Footer/></>)}

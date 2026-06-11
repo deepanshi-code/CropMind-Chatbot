@@ -1,3 +1,1 @@
-import Navbar from '../components/Navbar'
-import Footer from '../components/Footer'
-export default function Dashboard(){return <><Navbar/><main><h1>Dashboard</h1><p>Dashboard page</p></main><Footer/></>}
+import Navbar from "../components/Navbar";import Footer from "../components/Footer";export default function Dashboard(){return(<><Navbar/><main style={{padding:30}}><h1>Dashboard</h1><p>Dashboard placeholder page.</p></main><Footer/></>)}

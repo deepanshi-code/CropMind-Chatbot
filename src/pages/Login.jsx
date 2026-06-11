@@ -1,3 +1,1 @@
-import Navbar from '../components/Navbar'
-import Footer from '../components/Footer'
-export default function Login(){return <><Navbar/><main><h1>Login</h1><p>Login page</p></main><Footer/></>}
+import Navbar from "../components/Navbar";import Footer from "../components/Footer";export default function Login(){return(<><Navbar/><main style={{padding:30}}><h1>Login</h1><p>Login placeholder page.</p></main><Footer/></>)}
