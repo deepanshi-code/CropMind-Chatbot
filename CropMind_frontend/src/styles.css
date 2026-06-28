@@ -1,0 +1,270 @@
+
+body{margin:0;font-family:Arial;background:#08121d;color:white}
+nav{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px 60px;
+background:rgba(14,27,43,0.9);
+backdrop-filter:blur(10px);
+position:sticky;
+top:0;
+z-index:1000;
+box-shadow:0 4px 20px rgba(0,0,0,0.2);
+}
+.links a{
+color:white;
+text-decoration:none;
+margin-left:25px;
+font-weight:600;
+transition:0.3s;
+}
+
+.links a:hover{
+color:#22c55e;
+}
+.page{
+    min-height:80vh;
+
+    background:
+    linear-gradient(
+        rgba(0,0,0,0.75),
+        rgba(0,0,0,0.75)
+    ),
+    url("./assets/farm-bg.png");
+
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+
+    padding:60px;
+}
+.hero{
+    padding:120px 60px;
+
+    background:
+    linear-gradient(
+        rgba(0,0,0,0.55),
+        rgba(0,0,0,0.55)
+    ),
+    url("./assets/farm-bg.png");
+
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+
+    min-height:70vh;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+}
+.cards{
+    display:flex;
+    justify-content:center;
+    gap:30px;
+    flex-wrap:wrap;
+    padding:40px 60px;
+}
+.card{
+    width:300px;
+}
+.card{
+background:#132235;
+padding:25px;
+border-radius:16px;
+box-shadow:0 0 20px rgba(0,255,120,.1);
+transition:0.3s ease;
+cursor:pointer;
+}
+
+.card:hover{
+transform:translateY(-10px);
+box-shadow:0 15px 35px rgba(0,255,120,.25);
+}
+button{
+padding:14px 30px;
+border:none;
+border-radius:12px;
+background:#22c55e;
+color:white;
+font-size:16px;
+font-weight:600;
+cursor:pointer;
+width:auto;
+display:inline-block;
+transition:0.3s;
+}
+
+button:hover{
+transform:translateY(-2px);
+opacity:0.9;
+}
+footer{padding:30px;text-align:center;background:#0e1b2b;margin-top:40px}
+.dark {
+  background: #08121d;
+  color: white;
+  min-height: 100vh;
+}
+
+.light {
+  background: #f4f7fb;
+  color: #111;
+  min-height: 100vh;
+}
+
+.light nav {
+  background: white;
+}
+
+.light .card {
+  background: white;
+  color: black;
+}
+
+.light footer {
+  background: white;
+}
+.light .links a {
+  color: black;
+}
+
+.light h1,
+.light h2,
+.light h3,
+.light p,
+.light li {
+  color: #111;
+}
+
+.light button {
+  color: black;
+}
+.dark .hero h1,
+.dark .hero h2,
+.dark .hero p,
+.light .hero h1,
+.light .hero h2,
+.light .hero p {
+    color: white;
+}
+.card {
+    transition: 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+}
+.page{
+    min-height:80vh;
+
+    background:
+    linear-gradient(
+        rgba(0,0,0,0.75),
+        rgba(0,0,0,0.75)
+    ),
+    url("./assets/farm-bg.png");
+
+    background-size:cover;
+    background-position:center;
+    background-repeat:no-repeat;
+
+    padding:60px;
+}
+.login-container{
+    min-height:70vh;
+
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+.page .cards{
+    max-width:1400px;
+    margin:auto;
+}
+.chat-toggle{
+    position:fixed;
+    bottom:25px;
+    right:25px;
+
+    background:#22c55e;
+    color:white;
+
+    padding:15px 22px;
+    border-radius:50px;
+
+    cursor:pointer;
+    font-weight:600;
+
+    box-shadow:0 8px 20px rgba(0,0,0,0.3);
+    z-index:1000;
+}
+
+.chat-window{
+    position:fixed;
+    bottom:90px;
+    right:25px;
+
+    width:350px;
+    height:500px;
+
+    background:#10233d;
+    border-radius:20px;
+
+    display:flex;
+    flex-direction:column;
+
+    overflow:hidden;
+
+    box-shadow:0 10px 30px rgba(0,0,0,0.4);
+
+    z-index:1000;
+}
+
+.chat-header{
+    padding:18px;
+    font-size:20px;
+    font-weight:700;
+    text-align:center;
+    background:#0b1730;
+}
+
+.chat-body{
+    flex:1;
+    padding:15px;
+    overflow-y:auto;
+}
+
+.bot-msg{
+    background:#1f3d65;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.user-msg{
+    background:#22c55e;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+    text-align:right;
+}
+
+.chat-input{
+    display:flex;
+    padding:10px;
+    gap:10px;
+}
+
+.chat-input input{
+    flex:1;
+    padding:10px;
+}
