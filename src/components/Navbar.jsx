@@ -1,2 +1,0 @@
-import { Link } from "react-router-dom";
-export default function Navbar(){return(<nav style={{padding:20,display:"flex",justifyContent:"space-between",borderBottom:"1px solid #ddd"}}><h2>🌱 CropMind</h2><div style={{display:"flex",gap:16}}><Link to="/">Home</Link><Link to="/about">About</Link><Link to="/dashboard">Dashboard</Link><Link to="/login">Login</Link></div></nav>)}

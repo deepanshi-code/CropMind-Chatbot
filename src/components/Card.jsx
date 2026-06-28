@@ -1,1 +1,0 @@
-export default function Card({title,text}){return(<div style={{padding:20,border:"1px solid #ddd",borderRadius:12}}><h3>{title}</h3><p>{text}</p></div>)}

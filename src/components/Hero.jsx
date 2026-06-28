@@ -1,1 +1,0 @@
-export default function Hero(){return(<section style={{padding:40,textAlign:"center"}}><h1>AI Powered Crop Advisory</h1><p>Helping farmers with quick guidance.</p></section>)}

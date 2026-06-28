@@ -1,1 +1,0 @@
-import Navbar from "../components/Navbar";import Footer from "../components/Footer";export default function About(){return(<><Navbar/><main style={{padding:30}}><h1>About</h1><p>CropMind supports farmers with accessible advisory guidance.</p></main><Footer/></>)}
