@@ -8,7 +8,7 @@ Welcome to **CropMind**! This is a beginner-friendly smart farming application d
 
 CropMind is split into two parts:
 1. **The Frontend (The Visual App)**: The website you open in your web browser. It displays the dashboard, crop cards, weather/moisture widgets, and the floating chat window.
-2. **The Backend (The Engine)**: A background program that saves crop details to a local database (SQLite) so they aren't lost when you refresh or close the page, and securely handles talking to Google's Gemini AI.
+2. **The Backend (The Engine)**: A background program that saves crop details and IoT telemetry logs to a MongoDB database so they aren't lost when you refresh or close the page, and securely handles talking to Google's Gemini AI.
 
 ---
 
@@ -16,8 +16,60 @@ CropMind is split into two parts:
 
 We have reorganized the files into a clean folder structure:
 * **`/frontend`**: Contains the code for the website interface, designs, and pages.
-* **`/backend`**: Contains the code that saves crop details and securely connects to the AI assistant.
-* **`cropmind.db`**: A file automatically created inside the `/backend` folder to act as the database.
+* **`/backend`**: Contains the Node.js server, configuration files, and database connectors.
+* **`/backend/models`**: Contains the Mongoose schemas defining our database entities (`Crop`, `TelemetryLog`, and `User`).
+
+---
+
+## Prerequisites
+
+*   **Node.js**: Version 18.0.0 or higher is required.
+*   **MongoDB**: An active local MongoDB instance (`mongodb://127.0.0.1:27017/cropmind`) OR a MongoDB Atlas cloud connection URI.
+    *   *Note: If no local database is running, the backend will automatically fallback to In-Memory Mock Mode so the application runs out-of-the-box without crashes.*
+
+---
+
+## Database Choice & Architecture
+
+### Why MongoDB?
+MongoDB was chosen for the database layer because:
+1.  **Flexible Schema:** Essential for storing diverse IoT telemetry logs and unstructured AI chat assistant inputs.
+2.  **Mongoose Integration:** Allows defining strict validators for farming entities (Crops, Users) while maintaining scalability.
+3.  **JSON Compatibility:** Perfect fit for React REST API communications.
+
+### Database Schema Diagram
+
+The database structure consists of three main collections with the following attributes:
+
+![Database Schema Diagram](./W5_SchemaDiagram_CropMind.png)
+
+---
+
+## Set up the Database
+
+You can connect CropMind to either a local MongoDB installation or MongoDB Atlas (cloud database).
+
+### Option 1: Using MongoDB Atlas (Cloud Database - Recommended)
+1.  Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas) and sign up for a free account.
+2.  Create a new free cluster (Shared M0 Tier).
+3.  Under **Network Access**, whitelist your IP address or set it to `0.0.0.0/0` to allow access from anywhere.
+4.  Under **Database Access**, create a database user with a password (e.g. username `farmer`, password `growcrops`).
+5.  Click **Connect** -> **Drivers** to find your Connection String. It should look like:
+    ```
+    mongodb+srv://farmer:growcrops@cluster.mongodb.net/cropmind?retryWrites=true&w=majority
+    ```
+6.  Open `/backend/.env` and replace `MONGO_URI` with your connection string:
+    ```ini
+    MONGO_URI=mongodb+srv://farmer:growcrops@cluster.mongodb.net/cropmind?retryWrites=true&w=majority
+    ```
+
+### Option 2: Using Local MongoDB Community Server
+1.  Download the installer from [mongodb.com/try/download/community](https://www.mongodb.com/try/download/community).
+2.  Install MongoDB on your computer, making sure "Install MongoDB as a Service" is checked.
+3.  Start the service if it's not running.
+4.  The application will automatically connect to `mongodb://127.0.0.1:27017/cropmind`.
+
+*(Note: If no database is detected, the backend will display a database connection warning and gracefully activate its built-in in-memory mock fallback, allowing you to test the app without setting up MongoDB.)*
 
 ---
 
@@ -83,3 +135,82 @@ In your **second terminal**:
 * **Farming Telemetry**: Mock gauges for soil moisture levels, rain probability, and wholesale wheat market pricing.
 * **Theme Toggle**: Click the "Light" / "Dark" button in the navigation bar to instantly switch visual themes.
 * **AI Chatbot Assistant**: Click the green **AI Assistant** bubble in the bottom right corner to ask any farming questions (recommendations, fertilizer info, disease identifiers, and more).
+
+---
+
+## API Specifications
+
+The backend server runs on `http://localhost:5000` by default and exposes the following endpoints:
+
+### 1. Crop Registry API
+
+#### `GET /api/crops`
+*   **Description:** Retrieves all crops from the SQLite database, ordered by ID descending.
+*   **Response Status:** `200 OK`
+*   **Response Body:**
+    ```json
+    [
+      {
+        "id": 1,
+        "name": "Wheat",
+        "season": "Rabi",
+        "water": "Medium"
+      }
+    ]
+    ```
+
+#### `GET /api/crops/:id`
+*   **Description:** Retrieves a single crop's details by ID.
+*   **Response Status:** `200 OK` (with the crop object) or `404 Not Found` (if crop doesn't exist).
+
+#### `POST /api/crops`
+*   **Description:** Adds a new crop to the registry.
+*   **Request Body:**
+    ```json
+    {
+      "name": "Rice",
+      "season": "Kharif",
+      "water": "High"
+    }
+    ```
+*   **Response Status:** `201 Created` with the new crop object, or `400 Bad Request` if fields are missing.
+
+#### `PUT /api/crops/:id`
+*   **Description:** Updates an existing crop's details.
+*   **Request Body:**
+    ```json
+    {
+      "name": "Barley",
+      "season": "Rabi",
+      "water": "Low"
+    }
+    ```
+*   **Response Status:** `200 OK` with the updated crop object, or `404 Not Found`.
+
+#### `DELETE /api/crops/:id`
+*   **Description:** Deletes a crop from the registry.
+*   **Response Status:** `204 No Content` on success, or `404 Not Found`.
+
+#### `GET /api/crops/search/:name`
+*   **Description:** Searches crops whose name matches the search parameter.
+*   **Response Status:** `200 OK` with an array of matching crops.
+
+---
+
+### 2. AI Chat Assistant Proxy API
+
+#### `POST /api/chat`
+*   **Description:** Securely proxies prompts to Google's Gemini API, keeping the API key hidden from the client side.
+*   **Request Body:**
+    ```json
+    {
+      "message": "What is the recommended irrigation schedule for Rabi wheat?"
+    }
+    ```
+*   **Response Status:** `200 OK` on success, `400 Bad Request` if message is missing, or `502 Bad Gateway` if the server fails to contact Gemini.
+*   **Response Body:**
+    ```json
+    {
+      "reply": "* Wheat requires 4-6 irrigations depending on soil type.\n* Key stages include Crown Root Initiation (CRI) and Flowering..."
+    }
+    ```

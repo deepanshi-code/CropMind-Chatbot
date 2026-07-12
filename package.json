@@ -1,0 +1,17 @@
+{
+  "name": "cropmind-monorepo",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:backend": "npm run dev -w backend",
+    "dev": "concurrently --kill-others --prefix-colors \"cyan,green\" \"npm run dev -w frontend\" \"npm run dev -w backend\"",
+    "start": "concurrently --kill-others --prefix-colors \"cyan,green\" \"npm run dev -w frontend\" \"npm run start -w backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

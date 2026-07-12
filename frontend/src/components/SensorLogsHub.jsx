@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getTelemetryLogs, createTelemetryLog } from "../services/api";
 
 export default function SensorLogsHub() {
   const [logs, setLogs] = useState([
@@ -16,30 +17,54 @@ export default function SensorLogsHub() {
   }, [logs]);
 
   useEffect(() => {
+    // Load historical logs from backend
+    getTelemetryLogs()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setLogs(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load telemetry logs:", err);
+      });
+  }, []);
+
+  useEffect(() => {
     const mockEvents = [
       { type: "info", text: "APMC Mandi: Wheat wholesale valuation refreshed (+₹30/Q)." },
       { type: "warning", text: "Node-1 (Thermal): Ambient temperature warning: 38.8°C." },
       { type: "success", text: "AI Engine: Hyperlocal weather advisory computed." },
       { type: "info", text: "Node-3 (Hydrology): Irrigation flow valve checked - closed." },
-      { type: "success", text: "System: Local SQLite database backup complete." },
+      { type: "success", text: "System: Local MongoDB database backup complete." },
       { type: "info", text: "Node-2 (Soil): Nitrogen telemetry level verified at 65%." },
       { type: "warning", text: "Node-4 (Moisture): Low soil hydration threshold warning (45%)." }
     ];
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const randomEvent = mockEvents[Math.floor(Math.random() * mockEvents.length)];
       const now = new Date();
       const timeStr = now.toTimeString().split(" ")[0];
       
-      setLogs((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
+      try {
+        const newLog = await createTelemetryLog({
           time: timeStr,
           type: randomEvent.type,
           text: randomEvent.text
-        }
-      ]);
+        });
+        setLogs((prev) => [...prev, newLog]);
+      } catch (err) {
+        console.error("Failed to save telemetry log:", err);
+        // Fallback to local state if database is unavailable
+        setLogs((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            time: timeStr,
+            type: randomEvent.type,
+            text: randomEvent.text
+          }
+        ]);
+      }
     }, 5000);
 
     return () => clearInterval(interval);

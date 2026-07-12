@@ -1,21 +1,33 @@
 const express = require("express");
 const cors = require("cors");
 const db = require("./db");
+const Crop = require("./models/Crop");
+const TelemetryLog = require("./models/TelemetryLog");
+const User = require("./models/User");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Connect to MongoDB
+db.connectDB();
+
 // Root path status check
 app.get("/", (req, res) => {
-  res.json({ message: "CropMind Backend Running" });
+  res.json({
+    message: "CropMind Backend Running",
+    mode: db.isMock() ? "In-Memory Mock Mode" : "MongoDB Mode"
+  });
 });
 
-// GET all crops from SQLite database
-app.get("/api/crops", (req, res) => {
+// GET all crops from MongoDB or In-Memory Mock Store
+app.get("/api/crops", async (req, res) => {
   try {
-    const crops = db.getAllCrops();
+    if (db.isMock()) {
+      return res.status(200).json(db.getMockCrops());
+    }
+    const crops = await Crop.find().sort({ createdAt: -1 });
     res.status(200).json(crops);
   } catch (error) {
     console.error("Error getting crops:", error);
@@ -24,9 +36,16 @@ app.get("/api/crops", (req, res) => {
 });
 
 // GET single crop by ID
-app.get("/api/crops/:id", (req, res) => {
+app.get("/api/crops/:id", async (req, res) => {
   try {
-    const crop = db.getCropById(req.params.id);
+    if (db.isMock()) {
+      const crop = db.getMockCrops().find(c => c.id === req.params.id);
+      if (!crop) {
+        return res.status(404).json({ message: "Crop not found" });
+      }
+      return res.status(200).json(crop);
+    }
+    const crop = await Crop.findById(req.params.id);
     if (!crop) {
       return res.status(404).json({ message: "Crop not found" });
     }
@@ -38,13 +57,26 @@ app.get("/api/crops/:id", (req, res) => {
 });
 
 // POST create a new crop
-app.post("/api/crops", (req, res) => {
+app.post("/api/crops", async (req, res) => {
   try {
     const { name, season, water } = req.body;
     if (!name || !season || !water) {
       return res.status(400).json({ message: "Name, season, and water fields are required" });
     }
-    const crop = db.createCrop(name, season, water);
+
+    if (db.isMock()) {
+      const newCrop = {
+        id: "mock-" + Date.now(),
+        name,
+        season,
+        water
+      };
+      const crops = db.getMockCrops();
+      db.setMockCrops([newCrop, ...crops]);
+      return res.status(201).json(newCrop);
+    }
+
+    const crop = await Crop.create({ name, season, water });
     res.status(201).json(crop);
   } catch (error) {
     console.error("Error creating crop:", error);
@@ -53,10 +85,32 @@ app.post("/api/crops", (req, res) => {
 });
 
 // PUT update an existing crop
-app.put("/api/crops/:id", (req, res) => {
+app.put("/api/crops/:id", async (req, res) => {
   try {
     const { name, season, water } = req.body;
-    const crop = db.updateCrop(req.params.id, name, season, water);
+
+    if (db.isMock()) {
+      const crops = db.getMockCrops();
+      const cropIndex = crops.findIndex(c => c.id === req.params.id);
+      if (cropIndex === -1) {
+        return res.status(404).json({ message: "Crop not found" });
+      }
+      const updatedCrop = {
+        ...crops[cropIndex],
+        name: name !== undefined ? name : crops[cropIndex].name,
+        season: season !== undefined ? season : crops[cropIndex].season,
+        water: water !== undefined ? water : crops[cropIndex].water
+      };
+      crops[cropIndex] = updatedCrop;
+      db.setMockCrops(crops);
+      return res.status(200).json(updatedCrop);
+    }
+
+    const crop = await Crop.findByIdAndUpdate(
+      req.params.id,
+      { name, season, water },
+      { new: true, runValidators: true }
+    );
     if (!crop) {
       return res.status(404).json({ message: "Crop not found" });
     }
@@ -68,10 +122,20 @@ app.put("/api/crops/:id", (req, res) => {
 });
 
 // DELETE a crop
-app.delete("/api/crops/:id", (req, res) => {
+app.delete("/api/crops/:id", async (req, res) => {
   try {
-    const success = db.deleteCrop(req.params.id);
-    if (!success) {
+    if (db.isMock()) {
+      const crops = db.getMockCrops();
+      const exists = crops.some(c => c.id === req.params.id);
+      if (!exists) {
+        return res.status(404).json({ message: "Crop not found" });
+      }
+      db.setMockCrops(crops.filter(c => c.id !== req.params.id));
+      return res.status(204).send();
+    }
+
+    const crop = await Crop.findByIdAndDelete(req.params.id);
+    if (!crop) {
       return res.status(404).json({ message: "Crop not found" });
     }
     res.status(204).send();
@@ -82,13 +146,65 @@ app.delete("/api/crops/:id", (req, res) => {
 });
 
 // GET search crops by name query
-app.get("/api/crops/search/:name", (req, res) => {
+app.get("/api/crops/search/:name", async (req, res) => {
   try {
-    const results = db.searchCrops(req.params.name);
+    const query = req.params.name.toLowerCase();
+
+    if (db.isMock()) {
+      const results = db.getMockCrops().filter(c => c.name.toLowerCase().includes(query));
+      return res.status(200).json(results);
+    }
+
+    const results = await Crop.find({
+      name: { $regex: req.params.name, $options: "i" }
+    }).sort({ createdAt: -1 });
     res.status(200).json(results);
   } catch (error) {
     console.error("Error searching crops:", error);
     res.status(500).json({ message: "Internal server error searching crops" });
+  }
+});
+
+// Telemetry endpoints for persistence
+// GET recent telemetry logs
+app.get("/api/telemetry", async (req, res) => {
+  try {
+    if (db.isMock()) {
+      return res.status(200).json(db.getMockTelemetry());
+    }
+    const logs = await TelemetryLog.find().sort({ createdAt: -1 }).limit(30);
+    res.status(200).json(logs.reverse());
+  } catch (error) {
+    console.error("Error getting telemetry logs:", error);
+    res.status(500).json({ message: "Error loading telemetry logs" });
+  }
+});
+
+// POST a new telemetry log
+app.post("/api/telemetry", async (req, res) => {
+  try {
+    const { time, type, text } = req.body;
+    if (!time || !type || !text) {
+      return res.status(400).json({ message: "Time, type, and text fields are required" });
+    }
+
+    if (db.isMock()) {
+      const newLog = {
+        id: "mock-log-" + Date.now(),
+        time,
+        type,
+        text
+      };
+      const logs = db.getMockTelemetry();
+      db.setMockTelemetry([...logs, newLog]);
+      return res.status(201).json(newLog);
+    }
+
+    const log = await TelemetryLog.create({ time, type, text });
+    res.status(201).json(log);
+  } catch (error) {
+    console.error("Error creating telemetry log:", error);
+    res.status(500).json({ message: "Error saving telemetry log" });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { getCrops, createCrop, deleteCrop } from "../services/api";
+import { getCrops, createCrop, deleteCrop, updateCrop } from "../services/api";
 import CropCard from "../components/CropCard";
 import SensorLogsHub from "../components/SensorLogsHub";
 import PriceSparkline from "../components/PriceSparkline";
@@ -62,6 +62,17 @@ export default function Dashboard() {
       alert("Failed to delete crop. Please try again.");
     }
   }, []);
+
+  const handleUpdateCrop = useCallback(async (id, updatedData) => {
+    try {
+      const updatedCrop = await updateCrop(id, updatedData);
+      setCrops((prev) => prev.map((crop) => (crop.id === id ? updatedCrop : crop)));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update crop. Please try again.");
+    }
+  }, []);
+
 
   return (
     <div className="page dashboard-page">
@@ -230,7 +241,7 @@ export default function Dashboard() {
           ) : (
             <div className="crops-grid">
               {crops.map((crop) => (
-                <CropCard key={crop.id} crop={crop} onDelete={handleDeleteCrop} />
+                <CropCard key={crop.id} crop={crop} onDelete={handleDeleteCrop} onUpdate={handleUpdateCrop} />
               ))}
             </div>
           )}

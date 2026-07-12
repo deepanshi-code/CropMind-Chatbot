@@ -23,6 +23,12 @@ export const deleteCrop = async (id) => {
   await api.delete(`/crops/${id}`);
 };
 
+export const updateCrop = async (id, cropData) => {
+  const response = await api.put(`/crops/${id}`, cropData);
+  return response.data;
+};
+
+
 export const searchCrops = async (name) => {
   const response = await api.get(`/crops/search/${name}`);
   return response.data;
@@ -33,4 +39,15 @@ export const sendMessageToAI = async (message) => {
   return response.data;
 };
 
+export const getTelemetryLogs = async () => {
+  const response = await api.get("/telemetry");
+  return response.data;
+};
+
+export const createTelemetryLog = async (logData) => {
+  const response = await api.post("/telemetry", logData);
+  return response.data;
+};
+
 export default api;
+
