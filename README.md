@@ -41,7 +41,7 @@ MongoDB was chosen for the database layer because:
 
 The database structure consists of three main collections with the following attributes:
 
-![Database Schema Diagram](./W5_SchemaDiagram_CropMind.png)
+![Database Schema Diagram](./W5_SchemaDiagram_TBI-26100746.png)
 
 ---
 
@@ -145,7 +145,7 @@ The backend server runs on `http://localhost:5000` by default and exposes the fo
 ### 1. Crop Registry API
 
 #### `GET /api/crops`
-*   **Description:** Retrieves all crops from the SQLite database, ordered by ID descending.
+*   **Description:** Retrieves all crops from the MongoDB database (or the in-memory fallback), ordered by creation time descending.
 *   **Response Status:** `200 OK`
 *   **Response Body:**
     ```json
