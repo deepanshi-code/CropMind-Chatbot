@@ -79,6 +79,25 @@ export default function Dashboard() {
       <div className="dashboard-header animate-fade-in">
         <h1>Smart Farming Dashboard</h1>
         <p>Real-time telemetry indicators and registered crops catalog.</p>
+        {localStorage.getItem("cropmind_token") && (
+          <div 
+            id="debug-jwt-box" 
+            style={{ 
+              background: "rgba(0, 255, 157, 0.05)", 
+              border: "1px solid var(--accent-green)", 
+              padding: "12px", 
+              borderRadius: "8px", 
+              marginTop: "12px", 
+              fontSize: "11px", 
+              wordBreak: "break-all",
+              fontFamily: "monospace",
+              color: "var(--accent-green)",
+              textAlign: "left"
+            }}
+          >
+            <strong>Bearer JWT Session Token:</strong> {localStorage.getItem("cropmind_token")}
+          </div>
+        )}
       </div>
 
       {/* Analytics / Metric Widgets */}
