@@ -15,6 +15,9 @@ let mockTelemetry = [
   { id: "mock-t3", time: "20:41:00", type: "success", text: "System: Local in-memory crop registry prepared." }
 ];
 
+let mockUsers = [];
+
+
 const connectDB = async () => {
   const mongoURI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cropmind";
   
@@ -51,5 +54,7 @@ module.exports = {
   getMockCrops: () => mockCrops,
   setMockCrops: (val) => { mockCrops = val; },
   getMockTelemetry: () => mockTelemetry,
-  setMockTelemetry: (val) => { mockTelemetry = val; }
+  setMockTelemetry: (val) => { mockTelemetry = val; },
+  getMockUsers: () => mockUsers,
+  setMockUsers: (val) => { mockUsers = val; }
 };

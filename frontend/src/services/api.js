@@ -9,6 +9,48 @@ const api = axios.create({
   }
 });
 
+// Attach Authorization Bearer token dynamically if it exists
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("cropmind_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Catch 401 response and redirect to login page
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("cropmind_token");
+      window.dispatchEvent(new Event("auth-change"));
+      // Redirect to login page only if not already there to prevent redirect loop
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login?error=SessionExpired";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+export const registerUser = async (email, password) => {
+  const response = await api.post("/auth/register", { email, password });
+  return response.data;
+};
+
+export const loginUser = async (email, password) => {
+  const response = await api.post("/auth/login", { email, password });
+  return response.data;
+};
+
 export const getCrops = async () => {
   const response = await api.get("/crops");
   return response.data;

@@ -1,14 +1,21 @@
 const express = require("express");
 const cors = require("cors");
+const passport = require("passport");
 const db = require("./db");
 const Crop = require("./models/Crop");
 const TelemetryLog = require("./models/TelemetryLog");
 const User = require("./models/User");
+const authRouter = require("./routes/auth");
+const { requireAuth } = require("./middleware/auth");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(passport.initialize());
+
+// Mount Auth routes
+app.use("/api/auth", authRouter);
 
 // Connect to MongoDB
 db.connectDB();
@@ -57,7 +64,7 @@ app.get("/api/crops/:id", async (req, res) => {
 });
 
 // POST create a new crop
-app.post("/api/crops", async (req, res) => {
+app.post("/api/crops", requireAuth, async (req, res) => {
   try {
     const { name, season, water } = req.body;
     if (!name || !season || !water) {
@@ -85,7 +92,7 @@ app.post("/api/crops", async (req, res) => {
 });
 
 // PUT update an existing crop
-app.put("/api/crops/:id", async (req, res) => {
+app.put("/api/crops/:id", requireAuth, async (req, res) => {
   try {
     const { name, season, water } = req.body;
 
@@ -122,7 +129,7 @@ app.put("/api/crops/:id", async (req, res) => {
 });
 
 // DELETE a crop
-app.delete("/api/crops/:id", async (req, res) => {
+app.delete("/api/crops/:id", requireAuth, async (req, res) => {
   try {
     if (db.isMock()) {
       const crops = db.getMockCrops();
@@ -167,7 +174,7 @@ app.get("/api/crops/search/:name", async (req, res) => {
 
 // Telemetry endpoints for persistence
 // GET recent telemetry logs
-app.get("/api/telemetry", async (req, res) => {
+app.get("/api/telemetry", requireAuth, async (req, res) => {
   try {
     if (db.isMock()) {
       return res.status(200).json(db.getMockTelemetry());
@@ -181,7 +188,7 @@ app.get("/api/telemetry", async (req, res) => {
 });
 
 // POST a new telemetry log
-app.post("/api/telemetry", async (req, res) => {
+app.post("/api/telemetry", requireAuth, async (req, res) => {
   try {
     const { time, type, text } = req.body;
     if (!time || !type || !text) {
