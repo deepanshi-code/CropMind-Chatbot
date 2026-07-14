@@ -36,8 +36,9 @@ const validateAuthBody = (req, res, next) => {
     next();
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMsg = error.errors.map(err => err.message).join(" ");
-      return res.status(400).json({ message: errorMsg });
+      const issues = error.issues || error.errors || [];
+      const errorMsg = issues.map(err => err.message).join(" ");
+      return res.status(400).json({ message: errorMsg || "Invalid input parameters." });
     }
     next(error);
   }
