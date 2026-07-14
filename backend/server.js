@@ -6,6 +6,7 @@ const Crop = require("./models/Crop");
 const TelemetryLog = require("./models/TelemetryLog");
 const User = require("./models/User");
 const authRouter = require("./routes/auth");
+const aiRouter = require("./routes/ai");
 const { requireAuth } = require("./middleware/auth");
 require("dotenv").config();
 
@@ -16,6 +17,7 @@ app.use(passport.initialize());
 
 // Mount Auth routes
 app.use("/api/auth", authRouter);
+app.use("/api/ai", aiRouter);
 
 // Connect to MongoDB
 db.connectDB();

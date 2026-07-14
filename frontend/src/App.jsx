@@ -8,6 +8,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 const Home = lazy(() => import("./pages/Home"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Telemetry = lazy(() => import("./pages/Telemetry"));
+const Advisor = lazy(() => import("./pages/Advisor"));
 const About = lazy(() => import("./pages/About"));
 const Login = lazy(() => import("./pages/Login"));
 
@@ -71,6 +72,7 @@ export default function App() {
             <NavLink to="/" end className={({ isActive }) => isActive ? "active-link" : ""}>Home</NavLink>
             <NavLink to="/dashboard" className={({ isActive }) => isActive ? "active-link" : ""}>Dashboard</NavLink>
             <NavLink to="/telemetry" className={({ isActive }) => isActive ? "active-link" : ""}>Telemetry</NavLink>
+            <NavLink to="/advisor" className={({ isActive }) => isActive ? "active-link" : ""}>AI Advisor</NavLink>
             <NavLink to="/about" className={({ isActive }) => isActive ? "active-link" : ""}>About</NavLink>
             {isLoggedIn ? (
               <button 
@@ -114,6 +116,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <Telemetry />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/advisor" 
+                element={
+                  <ProtectedRoute>
+                    <Advisor />
                   </ProtectedRoute>
                 } 
               />

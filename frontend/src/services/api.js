@@ -81,6 +81,11 @@ export const sendMessageToAI = async (message) => {
   return response.data;
 };
 
+export const diagnoseCrop = async (diagnosticData) => {
+  const response = await api.post("/ai/diagnose", diagnosticData);
+  return response.data;
+};
+
 export const getTelemetryLogs = async () => {
   const response = await api.get("/telemetry");
   return response.data;
