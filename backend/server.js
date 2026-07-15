@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const passport = require("passport");
@@ -8,11 +9,19 @@ const User = require("./models/User");
 const authRouter = require("./routes/auth");
 const aiRouter = require("./routes/ai");
 const { requireAuth } = require("./middleware/auth");
-require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  console.log(`[HTTP] ${req.method} ${req.url}`);
+  const oldJson = res.json;
+  res.json = function(data) {
+    console.log(`[HTTP] Response status: ${res.statusCode} for ${req.method} ${req.url}`);
+    return oldJson.apply(this, arguments);
+  };
+  next();
+});
 app.use(passport.initialize());
 
 // Mount Auth routes
