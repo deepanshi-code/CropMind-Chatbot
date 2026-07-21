@@ -4,17 +4,25 @@ import CropCard from "../components/CropCard";
 import SensorLogsHub from "../components/SensorLogsHub";
 import PriceSparkline from "../components/PriceSparkline";
 import NPKBarGauge from "../components/NPKBarGauge";
+import Loader from "../components/Loader";
+import Toast from "../components/Toast";
+import EmptyState from "../components/EmptyState";
 
 export default function Dashboard() {
   const [crops, setCrops] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
   // Form states for creating new crop
   const [name, setName] = useState("");
   const [season, setSeason] = useState("Kharif");
   const [water, setWater] = useState("Medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const showNotification = (type, title, message) => {
+    setToast({ type, title, message });
+    setTimeout(() => setToast(null), 5000);
+  };
 
   useEffect(() => {
     fetchCrops();
@@ -25,10 +33,9 @@ export default function Dashboard() {
       setLoading(true);
       const data = await getCrops();
       setCrops(data);
-      setError(null);
     } catch (err) {
       console.error(err);
-      setError("Failed to load crops registry. Make sure backend is running.");
+      showNotification("error", "Catalog Loading Error", "Failed to load crops registry. Make sure backend service is running.");
     } finally {
       setLoading(false);
     }
@@ -36,46 +43,55 @@ export default function Dashboard() {
 
   const handleAddCrop = useCallback(async (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      showNotification("error", "Validation Error", "Please provide a valid crop name.");
+      return;
+    }
 
     try {
       setIsSubmitting(true);
-      const newCrop = await createCrop({ name, season, water });
+      const newCrop = await createCrop({ name: trimmedName, season, water });
       setCrops((prev) => [newCrop, ...prev]);
       setName("");
       setSeason("Kharif");
       setWater("Medium");
+      showNotification("success", "Crop Registered", `Successfully added "${newCrop.name}" to registry.`);
     } catch (err) {
       console.error(err);
-      alert("Failed to add crop. Please try again.");
+      showNotification("error", "Action Failed", "Failed to register new crop. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   }, [name, season, water]);
 
   const handleDeleteCrop = useCallback(async (id) => {
+    const targetCrop = crops.find(c => c.id === id);
     try {
       await deleteCrop(id);
       setCrops((prev) => prev.filter((crop) => crop.id !== id));
+      showNotification("success", "Crop Removed", `Successfully removed "${targetCrop?.name || 'crop'}" from catalog.`);
     } catch (err) {
       console.error(err);
-      alert("Failed to delete crop. Please try again.");
+      showNotification("error", "Deletion Failed", "Failed to delete crop record.");
     }
-  }, []);
+  }, [crops]);
 
   const handleUpdateCrop = useCallback(async (id, updatedData) => {
     try {
       const updatedCrop = await updateCrop(id, updatedData);
       setCrops((prev) => prev.map((crop) => (crop.id === id ? updatedCrop : crop)));
+      showNotification("success", "Crop Updated", `Updated details for "${updatedCrop.name}".`);
     } catch (err) {
       console.error(err);
-      alert("Failed to update crop. Please try again.");
+      showNotification("error", "Update Failed", "Failed to update crop record.");
     }
   }, []);
 
-
   return (
     <div className="page dashboard-page">
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
       <div className="dashboard-header animate-fade-in">
         <h1>Smart Farming Dashboard</h1>
         <p>Real-time telemetry indicators and registered crops catalog.</p>
@@ -250,13 +266,12 @@ export default function Dashboard() {
           </div>
 
           {loading ? (
-            <div className="state-message">Loading crops registry...</div>
-          ) : error ? (
-            <div className="state-message error-message">{error}</div>
+            <Loader text="Loading crop catalog from database..." />
           ) : crops.length === 0 ? (
-            <div className="state-message empty-message">
-              No crops registered. Use the sidebar form to add your first crop!
-            </div>
+            <EmptyState
+              title="No Crops Registered Yet"
+              message="Your crop catalog is currently empty. Use the sidebar form on the left to add your first crop!"
+            />
           ) : (
             <div className="crops-grid">
               {crops.map((crop) => (
