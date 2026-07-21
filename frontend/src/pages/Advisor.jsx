@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getCrops, diagnoseCrop } from "../services/api";
+import Toast from "../components/Toast";
 
 export default function Advisor() {
   const [crops, setCrops] = useState([]);
@@ -15,14 +16,11 @@ export default function Advisor() {
   // Status & Response states
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
-  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
   const [result, setResult] = useState(null);
 
   // Checked state for treatment plan items
   const [checkedTreatments, setCheckedTreatments] = useState({});
-
-  // Error Toast auto-timer
-  const [showToast, setShowToast] = useState(false);
 
   useEffect(() => {
     fetchCropsList();
@@ -70,41 +68,40 @@ export default function Advisor() {
     const finalCropName = selectedCrop === "other" ? customCropName : selectedCrop;
 
     if (!finalCropName || !finalCropName.trim()) {
-      triggerError("Crop name is required. Please select or enter a crop.");
+      triggerError("Validation Error", "Crop name is required. Please select or enter a crop name.");
       return;
     }
     if (!symptoms || !symptoms.trim()) {
-      triggerError("Please detail the observed symptoms.");
+      triggerError("Validation Error", "Please provide a description of observed crop symptoms.");
       return;
     }
 
     setIsLoading(true);
-    setError(null);
+    setToast(null);
     setResult(null);
     setCheckedTreatments({});
 
     try {
       const data = await diagnoseCrop({
-        cropName: finalCropName,
-        symptoms,
+        cropName: finalCropName.trim(),
+        symptoms: symptoms.trim(),
         soilType,
         wateringFrequency
       });
       setResult(data);
     } catch (err) {
       console.error("AI diagnostics error:", err);
-      const errMsg = err.response?.data?.message || "Failed to analyze symptoms. Make sure the backend is running.";
-      triggerError(errMsg);
+      const errMsg = err.response?.data?.message || "Failed to analyze symptoms. Make sure the backend service is running.";
+      triggerError("AI Advisor Error", errMsg);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const triggerError = (msg) => {
-    setError(msg);
-    setShowToast(true);
+  const triggerError = (title, message) => {
+    setToast({ type: "error", title, message });
     setTimeout(() => {
-      setShowToast(false);
+      setToast(null);
     }, 6000);
   };
 
@@ -128,27 +125,7 @@ export default function Advisor() {
 
   return (
     <div className="page advisor-page">
-      {/* Toast Alert Box */}
-      {showToast && (
-        <div className="toast-overlay animate-fade-in">
-          <div className="toast-card error">
-            <div className="toast-icon">
-              <svg viewBox="0 0 24 24" width="20" height="20">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-            </div>
-            <div className="toast-content">
-              <h4>System Diagnostics Error</h4>
-              <p>{error}</p>
-            </div>
-            <button className="toast-close" onClick={() => setShowToast(false)} aria-label="Close Error">
-              &times;
-            </button>
-          </div>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="dashboard-header animate-fade-in">
         <h1>AI Agronomist & Diagnostic Advisor</h1>
