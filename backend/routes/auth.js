@@ -55,7 +55,7 @@ if (hasGoogleKeys) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "http://localhost:5000/api/auth/google/callback",
+        callbackURL: (process.env.BACKEND_URL || "http://localhost:5000") + "/api/auth/google/callback",
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
@@ -216,7 +216,7 @@ router.post("/logout", (req, res) => {
 router.get("/google", (req, res, next) => {
   if (!hasGoogleKeys) {
     // Redirect to Sandbox Simulator if Google client variables are not defined
-    return res.redirect("http://localhost:5000/api/auth/sandbox/google");
+    return res.redirect((process.env.BACKEND_URL || "http://localhost:5000") + "/api/auth/sandbox/google");
   }
   passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
 });
@@ -224,12 +224,12 @@ router.get("/google", (req, res, next) => {
 // Callback for Google OAuth
 router.get(
   "/google/callback",
-  passport.authenticate("google", { session: false, failureRedirect: "http://localhost:5173/login?error=OAuthFailed" }),
+  passport.authenticate("google", { session: false, failureRedirect: (process.env.FRONTEND_URL || "http://localhost:5173") + "/login?error=OAuthFailed" }),
   (req, res) => {
     // Generate JWT for the authenticated user and redirect
     const user = req.user;
     const token = jwt.sign({ id: user.id || user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`http://localhost:5173/login?token=${token}`);
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?token=${token}`);
   }
 );
 
@@ -382,7 +382,7 @@ router.get("/sandbox/google", (req, res) => {
         <form action="/api/auth/sandbox/google/callback" method="POST">
           <button type="submit" class="btn btn-primary">Authorize CropMind Sandbox</button>
         </form>
-        <a href="http://localhost:5173/login?error=OAuthCancel" class="btn btn-secondary">Cancel</a>
+        <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=OAuthCancel" class="btn btn-secondary">Cancel</a>
       </div>
     </body>
     </html>
@@ -415,10 +415,10 @@ router.post("/sandbox/google/callback", async (req, res) => {
     }
 
     const token = jwt.sign({ id: user.id || user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`http://localhost:5173/login?token=${token}`);
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?token=${token}`);
   } catch (err) {
     console.error("Sandbox OAuth Callback Error:", err);
-    res.redirect("http://localhost:5173/login?error=SandboxOAuthFailed");
+    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=SandboxOAuthFailed`);
   }
 });
 

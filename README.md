@@ -214,3 +214,25 @@ The backend server runs on `http://localhost:5000` by default and exposes the fo
       "reply": "* Wheat requires 4-6 irrigations depending on soil type.\n* Key stages include Crown Root Initiation (CRI) and Flowering..."
     }
     ```
+
+---
+
+## Production Deployment & Live Application
+
+The CropMind application is optimized and configured for live production environment hosting.
+
+### Live URLs
+*   **Live Frontend URL:** [https://cropmind-app.vercel.app](https://cropmind-app.vercel.app) *(Replace with your actual Vercel deployment URL)*
+*   **Live Backend URL:** [https://cropmind-api.onrender.com](https://cropmind-api.onrender.com) *(Replace with your actual Render deployment URL)*
+
+### Tech Stack Summary
+*   **Frontend Client:** React 19, Vite 7 (vanilla CSS, responsive layouts, theme toggling, modular components)
+*   **Backend Server:** Node.js, Express 5, Passport (Google OAuth 2.0 with developer sandbox fallback, JWT session management)
+*   **Database:** MongoDB Atlas (Cloud NoSQL database, structured schema validators via Mongoose)
+*   **AI Integration:** Gemini API (2.5 Flash model proxy via backend for secure API key management)
+
+### Known Limitations on Free Tier
+*   **Render Server Spin Down:** The backend is hosted on Render's free web service plan. As a result, the server automatically spins down (goes to sleep) after **15 minutes of inactivity**. The first network request sent to the live app after it has been idle will trigger a cold-start, taking **30 to 60 seconds** to wake up.
+*   **MongoDB Cluster Limitations:** The database uses MongoDB Atlas's free M0 cluster. This tier shares computing resources and has a storage ceiling of 512 MB, suitable for small-scale demonstration and testing.
+*   **Sandbox OAuth Account Limit:** When using Google OAuth in Sandbox mode (i.e. client ID is not configured), only the pre-defined mock farmer identity can be simulated.
+

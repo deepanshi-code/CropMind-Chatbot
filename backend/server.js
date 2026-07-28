@@ -11,7 +11,22 @@ const aiRouter = require("./routes/ai");
 const { requireAuth } = require("./middleware/auth");
 
 const app = express();
-app.use(cors());
+
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173"
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.startsWith("http://localhost:")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use((req, res, next) => {
   console.log(`[HTTP] ${req.method} ${req.url}`);
