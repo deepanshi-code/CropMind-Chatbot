@@ -54,6 +54,54 @@ app.get("/", (req, res) => {
   });
 });
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK", timestamp: new Date() });
+});
+
+// Status check endpoint
+app.get("/status", (req, res) => {
+  res.status(200).json({
+    status: "online",
+    mode: db.isMock() ? "mock" : "production",
+    database: db.isMock() ? "disconnected" : "connected"
+  });
+});
+
+// API Documentation / Info route
+app.get("/docs", (req, res) => {
+  res.status(200).json({
+    name: "CropMind Backend API",
+    version: "1.0.0",
+    description: "API for smart farming registry, telemetry tracking, and Gemini AI proxy.",
+    endpoints: {
+      auth: [
+        "POST /api/auth/register - Register new user",
+        "POST /api/auth/login - Log in user",
+        "POST /api/auth/logout - Log out user",
+        "GET /api/auth/google - Initiate Google OAuth",
+        "GET /api/auth/google/callback - Google OAuth callback"
+      ],
+      crops: [
+        "GET /api/crops - Get all crops",
+        "GET /api/crops/:id - Get single crop details",
+        "POST /api/crops - Create a new crop",
+        "PUT /api/crops/:id - Update existing crop details",
+        "DELETE /api/crops/:id - Delete a crop",
+        "GET /api/crops/search/:name - Search crops by name query"
+      ],
+      telemetry: [
+        "GET /api/telemetry - Retrieve recent telemetry logs",
+        "POST /api/telemetry - Add new telemetry logs"
+      ],
+      ai: [
+        "POST /api/chat - Proxy chat message to Gemini AI",
+        "POST /api/ai/diagnose - Diagnose crop diagnostics via Gemini AI"
+      ]
+    }
+  });
+});
+
 // GET all crops from MongoDB or In-Memory Mock Store
 app.get("/api/crops", async (req, res) => {
   try {
