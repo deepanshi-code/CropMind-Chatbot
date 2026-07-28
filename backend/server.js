@@ -70,36 +70,365 @@ app.get("/status", (req, res) => {
 
 // API Documentation / Info route
 app.get("/docs", (req, res) => {
-  res.status(200).json({
-    name: "CropMind Backend API",
-    version: "1.0.0",
-    description: "API for smart farming registry, telemetry tracking, and Gemini AI proxy.",
-    endpoints: {
-      auth: [
-        "POST /api/auth/register - Register new user",
-        "POST /api/auth/login - Log in user",
-        "POST /api/auth/logout - Log out user",
-        "GET /api/auth/google - Initiate Google OAuth",
-        "GET /api/auth/google/callback - Google OAuth callback"
-      ],
-      crops: [
-        "GET /api/crops - Get all crops",
-        "GET /api/crops/:id - Get single crop details",
-        "POST /api/crops - Create a new crop",
-        "PUT /api/crops/:id - Update existing crop details",
-        "DELETE /api/crops/:id - Delete a crop",
-        "GET /api/crops/search/:name - Search crops by name query"
-      ],
-      telemetry: [
-        "GET /api/telemetry - Retrieve recent telemetry logs",
-        "POST /api/telemetry - Add new telemetry logs"
-      ],
-      ai: [
-        "POST /api/chat - Proxy chat message to Gemini AI",
-        "POST /api/ai/diagnose - Diagnose crop diagnostics via Gemini AI"
-      ]
-    }
-  });
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>CropMind Developer API Portal</title>
+      <style>
+        :root {
+          --bg: #030712;
+          --panel: #0b1329;
+          --border: #1e293b;
+          --accent: #10b981;
+          --accent-glow: rgba(16, 185, 129, 0.15);
+          --text: #cbd5e1;
+          --text-muted: #64748b;
+          --get: #38bdf8;
+          --post: #34d399;
+          --put: #fbbf24;
+          --delete: #f87171;
+        }
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+          background-color: var(--bg);
+          color: var(--text);
+          line-height: 1.6;
+        }
+        header {
+          background: linear-gradient(180deg, var(--accent-glow), transparent);
+          border-bottom: 1px solid var(--border);
+          padding: 60px 20px;
+          text-align: center;
+        }
+        .logo {
+          display: inline-block;
+          background: var(--accent-glow);
+          border: 1px solid var(--accent);
+          color: var(--accent);
+          padding: 6px 16px;
+          border-radius: 50px;
+          font-size: 13px;
+          font-weight: bold;
+          text-transform: uppercase;
+          letter-spacing: 1.5px;
+          margin-bottom: 16px;
+        }
+        header h1 {
+          margin: 0 0 12px 0;
+          font-size: 36px;
+          color: white;
+          font-weight: 800;
+          letter-spacing: -1px;
+        }
+        header p {
+          margin: 0 auto;
+          max-width: 600px;
+          color: var(--text-muted);
+          font-size: 16px;
+        }
+        .container {
+          max-width: 900px;
+          margin: 40px auto;
+          padding: 0 20px 80px 20px;
+        }
+        .section-title {
+          font-size: 22px;
+          font-weight: 700;
+          margin: 40px 0 20px 0;
+          color: white;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 10px;
+        }
+        .endpoint-card {
+          background-color: var(--panel);
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          margin-bottom: 24px;
+          overflow: hidden;
+          box-shadow: 0 4px 25px rgba(0,0,0,0.4);
+        }
+        .endpoint-header {
+          padding: 18px 24px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          background: rgba(255,255,255,0.01);
+          border-bottom: 1px solid var(--border);
+        }
+        .method {
+          font-size: 12px;
+          font-weight: 800;
+          padding: 6px 12px;
+          border-radius: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .method.get { background: rgba(56, 189, 248, 0.1); color: var(--get); border: 1px solid rgba(56, 189, 248, 0.2); }
+        .method.post { background: rgba(52, 211, 153, 0.1); color: var(--post); border: 1px solid rgba(52, 211, 153, 0.2); }
+        .method.put { background: rgba(251, 191, 36, 0.1); color: var(--put); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .method.delete { background: rgba(248, 113, 113, 0.1); color: var(--delete); border: 1px solid rgba(248, 113, 113, 0.2); }
+        .path {
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 16px;
+          font-weight: 700;
+          color: white;
+        }
+        .desc {
+          color: var(--text-muted);
+          font-size: 14px;
+          margin-left: auto;
+        }
+        .endpoint-body {
+          padding: 24px;
+        }
+        .meta-list {
+          margin-bottom: 16px;
+        }
+        .meta-item {
+          display: flex;
+          font-size: 14px;
+          margin-bottom: 8px;
+        }
+        .meta-label {
+          font-weight: 600;
+          color: var(--text-muted);
+          width: 140px;
+          flex-shrink: 0;
+        }
+        .meta-value {
+          color: var(--text);
+        }
+        .auth-badge {
+          background: rgba(248, 113, 113, 0.1);
+          color: var(--delete);
+          border: 1px solid rgba(248, 113, 113, 0.2);
+          padding: 2px 8px;
+          border-radius: 4px;
+          font-size: 11px;
+          font-weight: bold;
+          text-transform: uppercase;
+        }
+        .auth-badge.none {
+          background: rgba(52, 211, 153, 0.1);
+          color: var(--post);
+          border: 1px solid rgba(52, 211, 153, 0.2);
+        }
+        .example-header {
+          font-size: 12px;
+          font-weight: bold;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin: 16px 0 6px 0;
+        }
+        pre {
+          background: #020617;
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 16px;
+          overflow-x: auto;
+          margin: 0;
+        }
+        code {
+          font-family: 'Courier New', Courier, monospace;
+          font-size: 13px;
+          color: #34d399;
+        }
+        .footer {
+          text-align: center;
+          padding: 40px;
+          color: var(--text-muted);
+          font-size: 13px;
+          border-top: 1px solid var(--border);
+        }
+      </style>
+    </head>
+    <body>
+      <header>
+        <div class="logo">CropMind Core Engine</div>
+        <h1>Developer API Portal</h1>
+        <p>Complete documentation for the CropMind backend services. Connect to authentication, manage crop datasets, log IoT sensor telemetry, and interface with Google's Gemini AI.</p>
+      </header>
+
+      <div class="container">
+        <!-- AUTH SERVICE -->
+        <div class="section-title">Authentication Endpoints</div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="path">/api/auth/register</span>
+            <span class="desc">Register a new farmer account</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge none">None Required</span></span></div>
+              <div class="meta-item"><span class="meta-label">Rate Limit</span><span class="meta-value">5 requests / min</span></div>
+            </div>
+            <div class="example-header">Request Payload (JSON)</div>
+            <pre><code>{
+  "email": "farmer@cropmind.com",
+  "password": "securepassword123"
+}</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="path">/api/auth/login</span>
+            <span class="desc">Authenticate credentials and generate token</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge none">None Required</span></span></div>
+              <div class="meta-item"><span class="meta-label">Rate Limit</span><span class="meta-value">5 requests / min</span></div>
+            </div>
+            <div class="example-header">Response Body (JSON)</div>
+            <pre><code>{
+  "message": "Login successful.",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "603d2e9c15b...",
+    "email": "farmer@cropmind.com"
+  }
+}</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method get">GET</span>
+            <span class="path">/api/auth/google</span>
+            <span class="desc">Initiate Google OAuth flow</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge none">OAuth Redirect</span></span></div>
+              <div class="meta-item"><span class="meta-label">Description</span><span class="meta-value">Redirects the user to Google Login. Automatically falls back to Developer Sandbox OAuth consent screen if client credentials are not defined.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CROP REGISTRY -->
+        <div class="section-title">Crop Registry Endpoints</div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method get">GET</span>
+            <span class="path">/api/crops</span>
+            <span class="desc">Retrieve all registered crops</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge none">None Required</span></span></div>
+            </div>
+            <div class="example-header">Response Body (JSON)</div>
+            <pre><code>[
+  {
+    "_id": "603d2e9c15b...",
+    "name": "Basmati Rice",
+    "season": "Kharif",
+    "water": "High",
+    "createdAt": "2026-07-28T16:00:00.000Z"
+  }
+]</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="path">/api/crops</span>
+            <span class="desc">Create a new crop entry</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Bearer JWT Token</span></span></div>
+            </div>
+            <div class="example-header">Request Payload (JSON)</div>
+            <pre><code>{
+  "name": "Kanak Wheat",
+  "season": "Rabi",
+  "water": "Medium"
+}</code></pre>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method put">PUT</span>
+            <span class="path">/api/crops/:id</span>
+            <span class="desc">Modify details of an existing crop</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Bearer JWT Token</span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method delete">DELETE</span>
+            <span class="path">/api/crops/:id</span>
+            <span class="desc">Delete a crop entry</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Bearer JWT Token</span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TELEMETRY -->
+        <div class="section-title">Telemetry Sensor Logs</div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method get">GET</span>
+            <span class="path">/api/telemetry</span>
+            <span class="desc">Get the 30 most recent logs</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Bearer JWT Token</span></span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI ADVISOR -->
+        <div class="section-title">AI Assistant & Chat Proxy</div>
+
+        <div class="endpoint-card">
+          <div class="endpoint-header">
+            <span class="method post">POST</span>
+            <span class="path">/api/chat</span>
+            <span class="desc">Get AI farming recommendations</span>
+          </div>
+          <div class="endpoint-body">
+            <div class="meta-list">
+              <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge none">None Required</span></span></div>
+              <div class="meta-item"><span class="meta-label">AI Engine</span><span class="meta-value">Gemini 2.5 Flash Proxy</span></div>
+            </div>
+            <div class="example-header">Request Payload (JSON)</div>
+            <pre><code>{
+  "message": "When should I irrigate my Rabi wheat?"
+}</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        &copy; 2026 CropMind. All rights reserved. Managed Production API Portal.
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 // GET all crops from MongoDB or In-Memory Mock Store
