@@ -222,8 +222,8 @@ The backend server runs on `http://localhost:5000` by default and exposes the fo
 The CropMind application is optimized and configured for live production environment hosting.
 
 ### Live URLs
-*   **Live Frontend URL:** [https://cropmind-app.vercel.app](https://cropmind-app.vercel.app) *(Replace with your actual Vercel deployment URL)*
-*   **Live Backend URL:** [https://cropmind-api.onrender.com](https://cropmind-api.onrender.com) *(Replace with your actual Render deployment URL)*
+*   **Live Frontend URL:** [https://crop-mind-chatbot-frontend.vercel.app](https://crop-mind-chatbot-frontend.vercel.app)
+*   **Live Backend URL:** [https://cropmind-chatbot-backend.onrender.com](https://cropmind-chatbot-backend.onrender.com)
 
 ### Tech Stack Summary
 *   **Frontend Client:** React 19, Vite 7 (vanilla CSS, responsive layouts, theme toggling, modular components)
