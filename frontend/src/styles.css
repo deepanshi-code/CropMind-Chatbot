@@ -311,6 +311,12 @@ svg {
   gap: 28px;
 }
 
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
 /* ==========================================
    Navbar Component
    ========================================== */

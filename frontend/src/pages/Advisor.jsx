@@ -317,7 +317,7 @@ export default function Advisor() {
               </div>
 
               {/* Preventive Measures & Soil Guidance Grid */}
-              <div className="grid-2-layout" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", marginTop: "24px" }}>
+              <div className="grid-2-layout grid-2" style={{ marginTop: "24px" }}>
                 {/* Preventive Card */}
                 <div className="card detail-advisor-card">
                   <div className="card-heading-block">

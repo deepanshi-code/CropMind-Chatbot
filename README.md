@@ -1,238 +1,198 @@
-# CropMind - Smart Farming Assistant
+# CropMind - AI-Powered Smart Farming Assistant
 
-Welcome to **CropMind**! This is a beginner-friendly smart farming application designed to help farmers keep track of their crops, check live farm measurements (like soil moisture and rain probability), and get helpful answers from an AI assistant.
-
----
-
-## What does CropMind do?
-
-CropMind is split into two parts:
-1. **The Frontend (The Visual App)**: The website you open in your web browser. It displays the dashboard, crop cards, weather/moisture widgets, and the floating chat window.
-2. **The Backend (The Engine)**: A background program that saves crop details and IoT telemetry logs to a MongoDB database so they aren't lost when you refresh or close the page, and securely handles talking to Google's Gemini AI.
+CropMind is an advanced smart agricultural intelligence platform designed to empower modern farming decisions. By connecting real-time local IoT soil sensors and APMC mandi market telemetry with state-of-the-art Generative AI models, CropMind provides actionable insights directly to farmers for crop cataloging, weather-aware planning, disease diagnosis, and hydro-efficiency.
 
 ---
 
-## How is the project organized?
-
-We have reorganized the files into a clean folder structure:
-* **`/frontend`**: Contains the code for the website interface, designs, and pages.
-* **`/backend`**: Contains the Node.js server, configuration files, and database connectors.
-* **`/backend/models`**: Contains the Mongoose schemas defining our database entities (`Crop`, `TelemetryLog`, and `User`).
+## Live Demo
+* **Frontend Web Application (Vercel):** [https://crop-mind-chatbot-frontend.vercel.app](https://crop-mind-chatbot-frontend.vercel.app)
+* **Backend Core API (Render):** [https://cropmind-chatbot-backend.onrender.com](https://cropmind-chatbot-backend.onrender.com)
 
 ---
 
-## Prerequisites
+## Screenshots
 
-*   **Node.js**: Version 18.0.0 or higher is required.
-*   **MongoDB**: An active local MongoDB instance (`mongodb://127.0.0.1:27017/cropmind`) OR a MongoDB Atlas cloud connection URI.
-    *   *Note: If no local database is running, the backend will automatically fallback to In-Memory Mock Mode so the application runs out-of-the-box without crashes.*
+### 1. Home / Landing Screen
+*A premium dark-themed cybernetic HUD dashboard greeting farmers with interactive guides.*
+![Home Screen](./screenshots/home.png)
 
----
+### 2. Secure Portal Authentication
+*Registration and login page with integration for Google OAuth developer sandbox mode.*
+![Authentication Portal](./screenshots/login.png)
 
-## Database Choice & Architecture
+### 3. Smart Farming Dashboard HUD
+*Displays soil moisture, predictive rain probability, real-time APMC Mandi market price sparklines, a crop catalog registry, and live sensor logs.*
+![Dashboard HUD](./screenshots/dashboard.png)
 
-### Why MongoDB?
-MongoDB was chosen for the database layer because:
-1.  **Flexible Schema:** Essential for storing diverse IoT telemetry logs and unstructured AI chat assistant inputs.
-2.  **Mongoose Integration:** Allows defining strict validators for farming entities (Crops, Users) while maintaining scalability.
-3.  **JSON Compatibility:** Perfect fit for React REST API communications.
-
-### Database Schema Diagram
-
-The database structure consists of three main collections with the following attributes:
-
-![Database Schema Diagram](./W5_SchemaDiagram_TBI-26100746.png)
+### 4. AI Agronomist Diagnostic Advisor
+*Interactive crop symptom analysis generating organic treatment checklists, preventative measures, and customized NPK guidance.*
+![Diagnostic Advisor](./screenshots/advisor.png)
 
 ---
 
-## Set up the Database
-
-You can connect CropMind to either a local MongoDB installation or MongoDB Atlas (cloud database).
-
-### Option 1: Using MongoDB Atlas (Cloud Database - Recommended)
-1.  Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas) and sign up for a free account.
-2.  Create a new free cluster (Shared M0 Tier).
-3.  Under **Network Access**, whitelist your IP address or set it to `0.0.0.0/0` to allow access from anywhere.
-4.  Under **Database Access**, create a database user with a password (e.g. username `farmer`, password `growcrops`).
-5.  Click **Connect** -> **Drivers** to find your Connection String. It should look like:
-    ```
-    mongodb+srv://farmer:growcrops@cluster.mongodb.net/cropmind?retryWrites=true&w=majority
-    ```
-6.  Open `/backend/.env` and replace `MONGO_URI` with your connection string:
-    ```ini
-    MONGO_URI=mongodb+srv://farmer:growcrops@cluster.mongodb.net/cropmind?retryWrites=true&w=majority
-    ```
-
-### Option 2: Using Local MongoDB Community Server
-1.  Download the installer from [mongodb.com/try/download/community](https://www.mongodb.com/try/download/community).
-2.  Install MongoDB on your computer, making sure "Install MongoDB as a Service" is checked.
-3.  Start the service if it's not running.
-4.  The application will automatically connect to `mongodb://127.0.0.1:27017/cropmind`.
-
-*(Note: If no database is detected, the backend will display a database connection warning and gracefully activate its built-in in-memory mock fallback, allowing you to test the app without setting up MongoDB.)*
+## Features
+* **Crop Catalog Registry**: CRUD capabilities to add, update, and remove crops. Crop data is persisted directly in MongoDB (or a safe in-memory database fallback during local testing).
+* **Farming Telemetry HUD**: Active tracking widgets indicating optimal soil moisture (72%), predictive rain probability (40%), and wholesale APMC Mandi price tickers.
+* **Price Sparkline Visualization**: Embedded SVG sparklines illustrating wholesale wheat price trends (+1.2% daily shifts).
+* **AI Agronomist Diagnostics**: Fully-featured diagnostic form that evaluates soil type, watering schedules, and crop symptoms to compile detailed agricultural advice.
+* **Interactive Treatment Checklists**: Generates checkable organic and chemical intervention tasks that update client states dynamically.
+* **Floating AI Chat Assistant**: Floating bubble widget present on all pages, enabling natural-language conversations with a custom agronomist model.
+* **Dual Color Themes**: Built-in support for high-contrast light and dark themes using modern CSS variables.
 
 ---
 
-## How to Setup and Run (Step-by-Step)
+## Tech Stack
 
-Follow these simple steps to run the application on your computer:
+### Frontend Client
+* **Framework**: React 19
+* **Build Tool**: Vite 7
+* **Routing**: React Router DOM 6
+* **Styling**: Vanilla CSS (TailwindCSS omitted for customizable grid layout and custom responsive theme animations)
 
-### Step 1: Open two terminal (command line) windows
-Because the website (Frontend) and the server (Backend) run separately, you need to open two terminals on your computer.
+### Backend Engine
+* **Runtime**: Node.js
+* **Framework**: Express 5
+* **Authentication**: JSON Web Tokens (JWT) & Passport.js (Google OAuth 2.0 with Developer Sandbox consent screen)
+* **Validation**: Zod Schemas
 
----
+### Database Layer
+* **Primary DB**: MongoDB Community Server / MongoDB Atlas Cloud
+* **Object Modeler**: Mongoose (strict schema validation)
+* **Mock Fallback**: Auto-switching In-Memory Database store (runs instantly out-of-the-box if MongoDB connection selection times out)
 
-### Step 2: Start the Backend (The Engine)
-In your **first terminal**:
+### AI Core
+* **Model**: Google Gemini 2.5 Flash API (secured behind the backend proxy configuration)
 
-1. Go into the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install the necessary packages:
-   ```bash
-   npm install
-   ```
-3. Set up your environment variables:
-   * Look at the file named `.env.example` in the backend folder.
-   * Make a copy of it and name it `.env`.
-   * Open this new `.env` file in any text editor and enter your Gemini API Key:
-     ```ini
-     PORT=5000
-     GEMINI_API_KEY=your_actual_gemini_key_here
-     ```
-   *(Note: If you don't have a Gemini API key yet, you can leave it blank. The chat window will still open and display a friendly notice).*
-4. Start the backend server:
-   ```bash
-   npm start
-   ```
-   You should see a message saying: **`Server running on port 5000`**.
+### Deployment Platforms
+* **Frontend**: Vercel
+* **Backend**: Render Web Service
+* **Database**: MongoDB Atlas Shared M0 Tier Cluster
 
 ---
 
-### Step 3: Start the Frontend (The Visual App)
-In your **second terminal**:
+## Setup Instructions
 
-1. Go into the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install the necessary packages:
-   ```bash
-   npm install
-   ```
-3. Start the visual preview server:
-   ```bash
-   npm run dev
-   ```
-4. A website link will appear (usually `http://localhost:5173`). Ctrl+Click that link or copy-paste it into your web browser to open the app!
+### Prerequisites
+* **Node.js**: Version 18.0.0 or higher.
+* **MongoDB**: A running local instance (`mongodb://127.0.0.1:27017/cropmind`) OR a MongoDB Atlas cloud connection string. *(Optional fallback: The app will run in in-memory Mock DB mode if no database is detected).*
 
----
+### Steps to Run Locally
 
-## Key Features
+#### 1. Clone and Navigate to the Repository
+```bash
+git clone https://github.com/deepanshi-code/CropMind-Chatbot.git
+cd CropMind
+```
 
-* **Crop Registry**: Add and delete crops directly from the **Dashboard** page. These crops persist in a database, meaning they won't disappear when you restart the app!
-* **Farming Telemetry**: Mock gauges for soil moisture levels, rain probability, and wholesale wheat market pricing.
-* **Theme Toggle**: Click the "Light" / "Dark" button in the navigation bar to instantly switch visual themes.
-* **AI Chatbot Assistant**: Click the green **AI Assistant** bubble in the bottom right corner to ask any farming questions (recommendations, fertilizer info, disease identifiers, and more).
+#### 2. Configure Environment Variables
+Create a `.env` file in the **`backend`** directory using the provided template:
+```bash
+cp backend/.env.example backend/.env
+```
+Open `backend/.env` and define the following variables:
+```ini
+PORT=5000
+MONGO_URI=mongodb://127.0.0.1:27017/cropmind  # (Or your cloud MongoDB Atlas URI)
+GEMINI_API_KEY=your_actual_gemini_api_key      # (Optional: floating chat uses mock brain if empty)
+JWT_SECRET=your_custom_secure_jwt_secret_key
+GOOGLE_CLIENT_ID=                             # (Optional: Sandbox simulated OAuth runs if left blank)
+GOOGLE_CLIENT_SECRET=                         # (Optional: Sandbox simulated OAuth runs if left blank)
+```
 
----
+Create a `.env` file in the **`frontend`** directory:
+```bash
+cp frontend/.env.example frontend/.env
+```
+Open `frontend/.env` and verify the API URL:
+```ini
+VITE_API_URL=http://localhost:5000
+```
 
-## API Specifications
+#### 3. Install Monorepo Dependencies
+Install all packages in the workspace root:
+```bash
+npm install
+```
 
-The backend server runs on `http://localhost:5000` by default and exposes the following endpoints:
-
-### 1. Crop Registry API
-
-#### `GET /api/crops`
-*   **Description:** Retrieves all crops from the MongoDB database (or the in-memory fallback), ordered by creation time descending.
-*   **Response Status:** `200 OK`
-*   **Response Body:**
-    ```json
-    [
-      {
-        "id": 1,
-        "name": "Wheat",
-        "season": "Rabi",
-        "water": "Medium"
-      }
-    ]
-    ```
-
-#### `GET /api/crops/:id`
-*   **Description:** Retrieves a single crop's details by ID.
-*   **Response Status:** `200 OK` (with the crop object) or `404 Not Found` (if crop doesn't exist).
-
-#### `POST /api/crops`
-*   **Description:** Adds a new crop to the registry.
-*   **Request Body:**
-    ```json
-    {
-      "name": "Rice",
-      "season": "Kharif",
-      "water": "High"
-    }
-    ```
-*   **Response Status:** `201 Created` with the new crop object, or `400 Bad Request` if fields are missing.
-
-#### `PUT /api/crops/:id`
-*   **Description:** Updates an existing crop's details.
-*   **Request Body:**
-    ```json
-    {
-      "name": "Barley",
-      "season": "Rabi",
-      "water": "Low"
-    }
-    ```
-*   **Response Status:** `200 OK` with the updated crop object, or `404 Not Found`.
-
-#### `DELETE /api/crops/:id`
-*   **Description:** Deletes a crop from the registry.
-*   **Response Status:** `204 No Content` on success, or `404 Not Found`.
-
-#### `GET /api/crops/search/:name`
-*   **Description:** Searches crops whose name matches the search parameter.
-*   **Response Status:** `200 OK` with an array of matching crops.
+#### 4. Run the Dev Servers
+Start both the Frontend and Backend concurrently using the workspace script:
+```bash
+npm run dev
+```
+* **Frontend Site**: Accessible at `http://localhost:5173/`
+* **Backend Server**: Accessible at `http://localhost:5000/`
 
 ---
 
-### 2. AI Chat Assistant Proxy API
+## API Documentation
 
-#### `POST /api/chat`
-*   **Description:** Securely proxies prompts to Google's Gemini API, keeping the API key hidden from the client side.
-*   **Request Body:**
-    ```json
-    {
-      "message": "What is the recommended irrigation schedule for Rabi wheat?"
-    }
-    ```
-*   **Response Status:** `200 OK` on success, `400 Bad Request` if message is missing, or `502 Bad Gateway` if the server fails to contact Gemini.
-*   **Response Body:**
-    ```json
-    {
-      "reply": "* Wheat requires 4-6 irrigations depending on soil type.\n* Key stages include Crown Root Initiation (CRI) and Flowering..."
-    }
-    ```
+The backend server runs on `http://localhost:5000` by default and exposes these key REST API endpoints. You can view the live interactive developer portal at `http://localhost:5000/docs`.
+
+### 1. Authentication
+* **`POST /api/auth/register`**: Registers a new farmer user.
+  * *Request Body*: `{"email": "farmer@cropmind.com", "password": "password123"}`
+* **`POST /api/auth/login`**: Verifies password credentials and issues a session JWT.
+  * *Response*: `{"token": "JWT_TOKEN", "user": {"email": "farmer@cropmind.com"}}`
+* **`GET /api/auth/google`**: Triggers Google OAuth 2.0 flow. Redirects to Sandbox Simulator if Google client variables are not defined.
+
+### 2. Crop Registry (Requires Bearer Token)
+* **`GET /api/crops`**: Retrieves all crop entries.
+* **`POST /api/crops`**: Registers a new crop.
+  * *Request Body*: `{"name": "Barley", "season": "Rabi", "water": "Low"}`
+* **`PUT /api/crops/:id`**: Modifies an existing crop's season or name.
+* **`DELETE /api/crops/:id`**: Removes a crop record from the catalog.
+
+### 3. Telemetry Logs (Requires Bearer Token)
+* **`GET /api/telemetry`**: Retrieves the 30 most recent active node logs.
+* **`POST /api/telemetry`**: Registers a new log from an IoT telemetry sensor.
+  * *Request Body*: `{"time": "12:00:00", "type": "warning", "text": "Low moisture."}`
+
+### 4. AI Agronomist Proxies
+* **`POST /api/chat`**: Securely proxies prompts to Google's Gemini API, hiding the secret API key from the client-side network panel.
+  * *Request Body*: `{"message": "How do I grow organic carrots?"}`
 
 ---
 
-## Production Deployment & Live Application
+## Architecture & Folder Structure
 
-The CropMind application is optimized and configured for live production environment hosting.
+CropMind follows a modular monorepo architecture separating the visual client (Frontend) and the server controllers (Backend).
 
-### Live URLs
-*   **Live Frontend URL:** [https://crop-mind-chatbot-frontend.vercel.app](https://crop-mind-chatbot-frontend.vercel.app)
-*   **Live Backend URL:** [https://cropmind-chatbot-backend.onrender.com](https://cropmind-chatbot-backend.onrender.com)
+```
+CropMind/
+├── backend/                  # Node.js Server & Database Configuration
+│   ├── middleware/           # JWT verification routes
+│   ├── models/               # MongoDB Mongoose Schemas (User, Crop, TelemetryLog)
+│   ├── routes/               # API route managers (auth, ai)
+│   ├── db.js                 # Safe database connector & local mock store fallback
+│   ├── server.js             # Main server controllers & docs endpoints
+│   └── package.json
+│
+├── frontend/                 # Vite + React Client
+│   ├── public/               # Favicon & assets
+│   ├── src/
+│   │   ├── assets/           # Dashboard hero visuals
+│   │   ├── components/       # Modular UI elements (NPKGauge, PriceSparkline, Chat)
+│   │   ├── pages/            # View pages (Home, Dashboard, Telemetry, Advisor, About, Login)
+│   │   ├── services/         # Client Axios API interceptors
+│   │   ├── App.jsx           # Routing & dark-theme triggers
+│   │   └── styles.css        # Core custom layout responsive styles
+│   └── package.json
+│
+├── screenshots/              # Embedded documentation images
+└── package.json              # Monorepo Workspace configuration
+```
 
-### Tech Stack Summary
-*   **Frontend Client:** React 19, Vite 7 (vanilla CSS, responsive layouts, theme toggling, modular components)
-*   **Backend Server:** Node.js, Express 5, Passport (Google OAuth 2.0 with developer sandbox fallback, JWT session management)
-*   **Database:** MongoDB Atlas (Cloud NoSQL database, structured schema validators via Mongoose)
-*   **AI Integration:** Gemini API (2.5 Flash model proxy via backend for secure API key management)
+---
 
-### Known Limitations on Free Tier
-*   **Render Server Spin Down:** The backend is hosted on Render's free web service plan. As a result, the server automatically spins down (goes to sleep) after **15 minutes of inactivity**. The first network request sent to the live app after it has been idle will trigger a cold-start, taking **30 to 60 seconds** to wake up.
-*   **MongoDB Cluster Limitations:** The database uses MongoDB Atlas's free M0 cluster. This tier shares computing resources and has a storage ceiling of 512 MB, suitable for small-scale demonstration and testing.
-*   **Sandbox OAuth Account Limit:** When using Google OAuth in Sandbox mode (i.e. client ID is not configured), only the pre-defined mock farmer identity can be simulated.
+## Known Limitations
 
+* **Render Server Spin-Down (Cold Start)**: The backend is deployed on a free Render tier. As a result, the server spins down after **15 minutes of inactivity**. The first API call sent to the app after a period of dormancy will trigger a cold-start, requiring **30 to 60 seconds** to boot.
+* **MongoDB M0 Storage Ceiling**: The database uses MongoDB Atlas's free M0 cluster, which has a memory capacity limit of **512 MB**, suitable only for developer testing and demonstration.
+* **Google Sandbox OAuth Account Limit**: When Google Client ID variables are omitted from the backend env configuration, the login redirects to a sandbox OAuth simulation. This sandbox is hardcoded to authorize `mock-farmer@cropmind.com`.
+
+---
+
+## Credits & Acknowledgements
+* **Mentorship & Evaluation**: Developed for the TBI-GEU Internship Capstone.
+* **AI Engine**: Powered by Google DeepMind's Gemini API developer sandbox models.
+* **Tech Guidelines**: Implemented in accordance with the Advanced Agentic Coding practices.
