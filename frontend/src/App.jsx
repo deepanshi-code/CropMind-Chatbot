@@ -22,6 +22,26 @@ function LoadingScreen() {
   );
 }
 
+function getUserEmail() {
+  const token = localStorage.getItem("cropmind_token");
+  if (!token) return "";
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload).email || "Farmer User";
+  } catch (e) {
+    console.error("Error parsing auth token payload", e);
+    return "Farmer User";
+  }
+}
+
 export default function App() {
   const [theme, setTheme] = useState("dark");
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("cropmind_token"));
@@ -77,22 +97,18 @@ export default function App() {
               <NavLink to="/advisor" className={({ isActive }) => isActive ? "active-link" : ""}>AI Advisor</NavLink>
               <NavLink to="/about" className={({ isActive }) => isActive ? "active-link" : ""}>About</NavLink>
               {isLoggedIn ? (
-                <button 
-                  onClick={handleLogout} 
-                  className="nav-logout-btn" 
-                  style={{ 
-                    background: "none", 
-                    border: "none", 
-                    color: "inherit", 
-                    cursor: "pointer", 
-                    font: "inherit",
-                    fontSize: "14px",
-                    padding: "6px 12px",
-                    borderRadius: "6px"
-                  }}
-                >
-                  Logout
-                </button>
+                <div className="nav-user-container">
+                  <div className="user-profile-badge">
+                    <span className="user-avatar-icon">👤</span>
+                    <span className="user-email">{getUserEmail()}</span>
+                  </div>
+                  <button 
+                    onClick={handleLogout} 
+                    className="nav-logout-btn"
+                  >
+                    Logout
+                  </button>
+                </div>
               ) : (
                 <NavLink to="/login" className={({ isActive }) => isActive ? "active-link" : ""}>Login</NavLink>
               )}

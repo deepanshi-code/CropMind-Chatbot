@@ -61,11 +61,68 @@ export default function About() {
         <hr className="divider" />
 
         <h2>Our Vision</h2>
-        <p>
+        <p className="vision-text">
           We aim to bridge the gap between traditional agricultural wisdom and modern deep tech. 
           By making artificial intelligence accessible, conversational, and practical, we strive to 
           improve crop yields, lower input costs, and enhance the livelihoods of farmers worldwide.
         </p>
+
+        <hr className="divider" />
+
+        <h2>Project Telemetry & Stats</h2>
+        <div className="project-stats-grid">
+          <div className="stat-card animate-fade-in-up delay-1">
+            <span className="stat-label">Project Version</span>
+            <span className="stat-value">v1.0.0</span>
+          </div>
+          <div className="stat-card animate-fade-in-up delay-2">
+            <span className="stat-label">Frameworks</span>
+            <span className="stat-value">React 19 / Express 5</span>
+          </div>
+          <div className="stat-card animate-fade-in-up delay-3">
+            <span className="stat-label">AI Engine</span>
+            <span className="stat-value">Gemini 2.5 Flash</span>
+          </div>
+          <div className="stat-card animate-fade-in-up delay-4">
+            <span className="stat-label">Database</span>
+            <span className="stat-value">MongoDB Atlas</span>
+          </div>
+        </div>
+
+        <hr className="divider" />
+
+        <h2>Meet the Developer</h2>
+        <div className="developer-profile-card animate-fade-in-up delay-2">
+          <div className="developer-avatar-container">
+            <div className="developer-avatar">
+              <span>DA</span>
+            </div>
+          </div>
+          <div className="developer-info">
+            <h3>Deepanshi Agarwal</h3>
+            <p className="developer-title">Full Stack Developer & AI Solutions Engineer</p>
+            <p className="developer-bio">
+              Passionate about leveraging modern software engineering, web technologies, and artificial intelligence
+              to solve real-world problems. Developed CropMind as an internship capstone project to empower farmers
+              with smart, data-driven agricultural advisory tools.
+            </p>
+            <div className="developer-links">
+              <a href="https://github.com/deepanshi-code" target="_blank" rel="noopener noreferrer" className="dev-link-btn github">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+                </svg>
+                GitHub Profile
+              </a>
+              <a href="mailto:deepanshiagarwal08@gmail.com" className="dev-link-btn email">
+                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                Contact Email
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

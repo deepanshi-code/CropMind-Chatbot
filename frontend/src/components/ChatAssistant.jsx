@@ -14,6 +14,49 @@ export default function ChatAssistant() {
   
   const messagesEndRef = useRef(null);
 
+  const getUserEmail = () => {
+    const token = localStorage.getItem("cropmind_token");
+    if (!token) return "";
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload).email || "";
+    } catch (e) {
+      console.error(e);
+      return "";
+    }
+  };
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      const email = getUserEmail();
+      setMessages((prev) => {
+        if (prev.length <= 1) {
+          return [
+            {
+              sender: "bot",
+              text: email 
+                ? `Hello, ${email}! I'm CropMind AI. Ask me about crops, weather, irrigation, or market prices in India.`
+                : "Hello! I'm CropMind AI. Ask me about crops, weather, irrigation, or market prices in India."
+            }
+          ];
+        }
+        return prev;
+      });
+    };
+
+    updateGreeting();
+    window.addEventListener("auth-change", updateGreeting);
+    return () => window.removeEventListener("auth-change", updateGreeting);
+  }, []);
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
@@ -151,10 +194,16 @@ export default function ChatAssistant() {
                       <path d="M12 7v4M8 15h.01M16 15h.01"></path>
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
+                    getUserEmail() ? (
+                      <span className="user-avatar-initials" title={getUserEmail()}>
+                        {getUserEmail().substring(0, 2).toUpperCase()}
+                      </span>
+                    ) : (
+                      <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                    )
                   )}
                 </div>
                 <div className="msg-content">

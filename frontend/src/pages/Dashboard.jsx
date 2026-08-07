@@ -19,6 +19,26 @@ export default function Dashboard() {
   const [water, setWater] = useState("Medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Extract userEmail from token
+  const token = localStorage.getItem("cropmind_token");
+  let userEmail = "";
+  if (token) {
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      userEmail = JSON.parse(jsonPayload).email || "Farmer User";
+    } catch (e) {
+      console.error("Error parsing JWT payload on dashboard:", e);
+    }
+  }
+
   const showNotification = (type, title, message) => {
     setToast({ type, title, message });
     setTimeout(() => setToast(null), 5000);
@@ -93,8 +113,23 @@ export default function Dashboard() {
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="dashboard-header animate-fade-in">
-        <h1>Smart Farming Dashboard</h1>
-        <p>Real-time telemetry indicators and registered crops catalog.</p>
+        <div className="dashboard-title-row">
+          <div className="dashboard-title-col">
+            <h1>Smart Farming Dashboard</h1>
+            <p>Real-time telemetry indicators and registered crops catalog.</p>
+          </div>
+          {userEmail && (
+            <div className="user-profile-card-header animate-fade-in-up">
+              <div className="user-profile-avatar">
+                {userEmail.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="user-profile-info">
+                <span className="user-profile-label">Logged in as</span>
+                <span className="user-profile-email">{userEmail}</span>
+              </div>
+            </div>
+          )}
+        </div>
         {localStorage.getItem("cropmind_token") && (
           <div 
             id="debug-jwt-box" 
@@ -103,7 +138,7 @@ export default function Dashboard() {
               border: "1px solid var(--accent-green)", 
               padding: "12px", 
               borderRadius: "8px", 
-              marginTop: "12px", 
+              marginTop: "20px", 
               fontSize: "11px", 
               wordBreak: "break-all",
               fontFamily: "monospace",

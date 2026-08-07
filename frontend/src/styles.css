@@ -1300,6 +1300,294 @@ button:disabled {
   line-height: 1.6;
 }
 
+/* Stats Grid & Cards */
+.project-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.stat-card {
+  background-color: var(--bg-base);
+  border: 1px solid var(--border-color);
+  padding: 18px 24px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+.stat-card:hover {
+  border-color: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+  transform: translateY(-2px);
+}
+
+.stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+}
+
+/* Developer Profile Section */
+.developer-profile-card {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  background-color: var(--bg-base);
+  border: 1px solid var(--border-color);
+  padding: 32px;
+  border-radius: 20px;
+  margin-top: 24px;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+.developer-profile-card:hover {
+  border-color: var(--accent-green);
+  box-shadow: var(--glow-emerald);
+}
+
+.developer-avatar-container {
+  flex-shrink: 0;
+}
+
+.developer-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(0, 255, 157, 0.25);
+}
+
+.developer-avatar span {
+  font-size: 28px;
+  font-weight: 900;
+  color: #050b14;
+  letter-spacing: -0.5px;
+}
+
+.developer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.developer-info h3 {
+  font-size: 22px;
+  font-weight: 850;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.developer-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-green);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.developer-bio {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.developer-links {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.dev-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+  border: 1px solid var(--border-color);
+}
+
+.dev-link-btn.github {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
+
+.dev-link-btn.github:hover {
+  background-color: var(--text-primary);
+  color: var(--bg-base);
+  border-color: var(--text-primary);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.dev-link-btn.email {
+  background-color: var(--accent-light);
+  color: var(--accent-green);
+  border-color: rgba(0, 255, 157, 0.2);
+}
+
+.dev-link-btn.email:hover {
+  background-color: var(--accent-green);
+  color: #050b14;
+  border-color: var(--accent-green);
+  box-shadow: 0 4px 15px rgba(0, 255, 157, 0.3);
+  transform: translateY(-2px);
+}
+
+.vision-text {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Responsive adjustment for Developer profile */
+@media (max-width: 640px) {
+  .developer-profile-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+    gap: 20px;
+  }
+  .developer-info {
+    text-align: center;
+  }
+  .developer-links {
+    justify-content: center;
+  }
+}
+
+/* User Profile Navbar Badge & Logout */
+.nav-user-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.user-avatar-icon {
+  font-size: 14px;
+}
+
+.user-email {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.nav-logout-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 10px;
+  transition: all var(--duration-fast) ease;
+}
+
+.nav-logout-btn:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Dashboard Header User Card Styles */
+.dashboard-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  width: 100%;
+}
+
+.dashboard-title-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: all var(--duration-normal) var(--ease-out-expo);
+}
+
+.user-profile-card-header:hover {
+  border-color: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.user-profile-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #050b14;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 4px 10px rgba(0, 255, 157, 0.15);
+}
+
+.user-profile-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.user-profile-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-profile-email {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
 /* ==========================================
    Login Page Component
    ========================================== */
@@ -1444,7 +1732,11 @@ button:disabled {
 .chat-toggle.open:hover {
   background-color: #dc2626;
   box-shadow: 0 12px 35px rgba(239, 68, 68, 0.5);
-  transform: translateY(-3px) rotate(90deg);
+  transform: translateY(-3px) scale(1.03);
+}
+
+.chat-toggle.open:hover svg {
+  transform: rotate(90deg);
 }
 
 .chat-label {
@@ -1582,6 +1874,20 @@ button:disabled {
 .msg-avatar svg {
   width: 16px;
   height: 16px;
+}
+
+.user-msg .msg-avatar {
+  background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-cyan) 100%);
+  border-color: var(--accent-green);
+  color: #050b14;
+  box-shadow: 0 4px 10px rgba(0, 255, 157, 0.15);
+}
+
+.user-avatar-initials {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  line-height: 1;
 }
 
 .msg-content {
