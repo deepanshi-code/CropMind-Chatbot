@@ -219,37 +219,10 @@ router.post("/logout", (req, res) => {
 // -------------------------------------------------------------------
 
 // Initiate Google OAuth login
-router.get("/google", async (req, res, next) => {
+router.get("/google", (req, res, next) => {
   if (!hasGoogleKeys) {
-    // Bypass verification completely and login instantly with a default google sandbox account
-    const email = "sandbox-google-user@cropmind.com";
-    try {
-      let user;
-      if (db.isMock()) {
-        const users = db.getMockUsers();
-        user = users.find(u => u.email === email);
-        if (!user) {
-          user = {
-            id: "mock-oauth-" + Date.now(),
-            email,
-            password: await bcrypt.hash("sandbox-oauth-pass", 10),
-          };
-          db.setMockUsers([user, ...users]);
-        }
-      } else {
-        user = await User.findOne({ email });
-        if (!user) {
-          const hashedPassword = await bcrypt.hash("sandbox-oauth-pass", 10);
-          user = await User.create({ email, password: hashedPassword });
-        }
-      }
-
-      const token = jwt.sign({ id: user.id || user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?token=${token}`);
-    } catch (err) {
-      console.error("Instant Google Sandbox Login Error:", err);
-      return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=SandboxOAuthFailed`);
-    }
+    // Redirect to Sandbox Simulator if Google client variables are not defined
+    return res.redirect((process.env.BACKEND_URL || "http://localhost:5000") + "/api/auth/sandbox/google");
   }
   passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
 });
