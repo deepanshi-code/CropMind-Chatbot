@@ -156,20 +156,12 @@ router.post("/login", authLimiter, validateAuthBody, async (req, res) => {
       const users = db.getMockUsers();
       user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
       if (!user) {
-        // Auto-register on first login attempt for seamless developer experience
-        const hashedPassword = await bcrypt.hash(password, 10);
-        user = {
-          id: "mock-user-" + Date.now(),
-          email: email.toLowerCase(),
-          password: hashedPassword
-        };
-        db.setMockUsers([user, ...users]);
-        console.log(`[Mock DB] Auto-registered user on login: ${email}`);
-      } else {
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-          console.log(`[Mock DB] Password mismatch for ${email}. Bypassing verification for developer experience.`);
-        }
+        return res.status(401).json({ message: "Invalid email or password." });
+      }
+
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(401).json({ message: "Invalid email or password." });
       }
 
       const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
@@ -183,18 +175,12 @@ router.post("/login", authLimiter, validateAuthBody, async (req, res) => {
     // MongoDB path
     user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      // Auto-register on first login attempt for seamless developer experience
-      const hashedPassword = await bcrypt.hash(password, 10);
-      user = await User.create({
-        email: email.toLowerCase(),
-        password: hashedPassword
-      });
-      console.log(`[MongoDB] Auto-registered user on login: ${email}`);
-    } else {
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        console.log(`[MongoDB] Password mismatch for ${email}. Bypassing verification for developer experience.`);
-      }
+      return res.status(401).json({ message: "Invalid email or password." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password." });
     }
 
     const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
