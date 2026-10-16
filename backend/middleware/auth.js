@@ -1,20 +1,38 @@
-const jwt = require("jsonwebtoken");
+const { COOKIE_NAME, verifySessionToken } = require("../services/session");
 
-const requireAuth = (req, res, next) => {
+// Accepts the httpOnly session cookie (browser) or a Bearer token (scripts / devices).
+const requireAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({ message: "Access denied. Authorization token missing or malformed." });
+  const token = req.cookies?.[COOKIE_NAME]
+    || (authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null);
+
+  if (!token) {
+    return res.status(401).json({ message: "Access denied. Please log in." });
   }
 
-  const token = authHeader.split(" ")[1];
   try {
-    const secret = process.env.JWT_SECRET || "fallback_dev_secret_key_cropmind";
-    const decoded = jwt.verify(token, secret);
-    req.user = decoded;
+    const user = await verifySessionToken(token);
+    if (!user) {
+      return res.status(401).json({ message: "Access denied. Invalid, expired or revoked session." });
+    }
+    req.user = user;
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Access denied. Invalid or expired token." });
+    next(err);
   }
 };
 
-module.exports = { requireAuth };
+// Browsers cannot attach custom headers to cross-site form posts or simple requests,
+// and CORS blocks them from other origins, so requiring one on state-changing
+// requests stops cross-site request forgery against the session cookie.
+const requireCsrfHeader = (req, res, next) => {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
+  // Bearer-token clients don't use cookies, so they are not exposed to CSRF.
+  if (req.headers.authorization?.startsWith("Bearer ")) return next();
+  if (req.get("X-Requested-With") !== "CropMind") {
+    return res.status(403).json({ message: "Missing CSRF header." });
+  }
+  next();
+};
+
+module.exports = { requireAuth, requireCsrfHeader };

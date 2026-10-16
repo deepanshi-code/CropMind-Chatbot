@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function Loader({ text = "Fetching real-time telemetry data..." }) {
+export default function Loader({ text = "Loading data..." }) {
   return (
     <div className="loader-container">
       <div className="spinner"></div>

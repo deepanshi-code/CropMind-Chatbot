@@ -1,88 +1,90 @@
 const express = require("express");
-const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const bcrypt = require("bcryptjs");
-const { z } = require("zod");
-const rateLimit = require("express-rate-limit");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 const db = require("../db");
 const User = require("../models/User");
+const { validate, schemas } = require("../middleware/validate");
+const { makeLimiter } = require("../middleware/rateLimit");
+const { requireAuth } = require("../middleware/auth");
+const { COOKIE_NAME, issueSession, clearSession, verifySessionToken, revokeSessions } = require("../services/session");
+const { FRONTEND_URL, hasGoogleKeys, isProduction } = require("../config");
 
 const router = express.Router();
 
-// Define JWT Secret fallback
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_dev_secret_key_cropmind";
+// The sandbox signs anyone in as any email without a password. It is only allowed in development
+// AND only against the in-memory database, so it can never be used on real accounts.
+// Render sets RENDER=true on every service, so a deployed server never offers the sandbox
+// even if NODE_ENV was not set to production.
+const sandboxConfigured = !hasGoogleKeys && !isProduction && !process.env.RENDER;
+const sandboxAvailable = () => sandboxConfigured && db.isMock();
 
-// Rate limiting middleware: 5 requests per 1 minute
-const authLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, 
-  max: 5,
-  message: { message: "Too many attempts from this IP, please try again after 1 minute." },
-  standardHeaders: true,
-  legacyHeaders: false,
+const FIFTEEN_MIN = 15 * 60 * 1000;
+// Per-IP limits are generous because many farmers may share one network; the per-account
+// limit is what actually stops password guessing against a single email.
+const loginIpLimiter = makeLimiter("login-ip", {
+  windowMs: FIFTEEN_MIN, max: 30, key: "ip",
+  message: "Too many login attempts from this network, please try again in 15 minutes.",
+});
+const loginAccountLimiter = makeLimiter("login-account", {
+  windowMs: FIFTEEN_MIN, max: 10, key: "email",
+  message: "Too many login attempts for this account, please try again in 15 minutes.",
+});
+const registerLimiter = makeLimiter("register-ip", {
+  windowMs: 60 * 60 * 1000, max: 10, key: "ip",
+  message: "Too many registrations from this network, please try again in an hour.",
 });
 
-// Zod schemas for input validation
-const authSchema = z.object({
-  email: z.string().trim().email({ message: "Invalid email format." }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters long." }),
-});
+// Compared against when the email is unknown, so both failure cases take the same time
+// and response timing does not reveal which emails are registered.
+const DUMMY_HASH = bcrypt.hashSync("timing-equaliser-not-a-password", 10);
 
-// Input validation middleware using Zod
-const validateAuthBody = (req, res, next) => {
-  try {
-    authSchema.parse(req.body);
-    next();
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const issues = error.issues || error.errors || [];
-      const errorMsg = issues.map(err => err.message).join(" ");
-      return res.status(400).json({ message: errorMsg || "Invalid input parameters." });
+// After OAuth the session cookie is already set, so no token ever appears in a URL.
+const finishOAuth = (res, user) => {
+  issueSession(res, user);
+  res.redirect(`${FRONTEND_URL}/dashboard`);
+};
+
+// OAuth-only accounts get an unguessable password hash so the password login can't be used on them.
+const randomPasswordHash = () => bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+
+const findOrCreateOAuthUser = async (rawEmail) => {
+  const email = rawEmail.trim().toLowerCase();
+  if (db.isMock()) {
+    const users = db.getMockUsers();
+    let user = users.find(u => u.email === email);
+    if (!user) {
+      user = { id: "mock-oauth-" + crypto.randomUUID(), email, password: await randomPasswordHash() };
+      db.setMockUsers([user, ...users]);
     }
-    next(error);
+    return user;
   }
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = await User.create({ email, password: await randomPasswordHash() });
+  }
+  return user;
 };
 
 // -------------------------------------------------------------------
 // PASSPORT GOOGLE STRATEGY CONFIGURATION (if keys exist)
 // -------------------------------------------------------------------
-const hasGoogleKeys = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-
 if (hasGoogleKeys) {
   passport.use(
     new GoogleStrategy(
       {
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: (process.env.BACKEND_URL || "http://localhost:5000") + "/api/auth/google/callback",
+        // Served through the frontend origin (Vercel / Vite proxy) so the session cookie is first-party.
+        callbackURL: FRONTEND_URL + "/api/auth/google/callback",
       },
       async (accessToken, refreshToken, profile, done) => {
         try {
-          const email = profile.emails[0].value;
-          let user;
-
-          if (db.isMock()) {
-            const users = db.getMockUsers();
-            user = users.find(u => u.email === email);
-            if (!user) {
-              user = {
-                id: "mock-oauth-" + Date.now(),
-                email,
-                password: await bcrypt.hash(Math.random().toString(36), 10),
-              };
-              db.setMockUsers([user, ...users]);
-            }
-          } else {
-            user = await User.findOne({ email });
-            if (!user) {
-              // Create user with a random secure password
-              const randomPass = Math.random().toString(36) + Math.random().toString(36);
-              const hashedPassword = await bcrypt.hash(randomPass, 10);
-              user = await User.create({ email, password: hashedPassword });
-            }
-          }
-          return done(null, user);
+          const email = profile.emails?.[0]?.value;
+          if (!email) return done(null, false);
+          return done(null, await findOrCreateOAuthUser(email));
         } catch (err) {
           return done(err);
         }
@@ -96,45 +98,29 @@ if (hasGoogleKeys) {
 // -------------------------------------------------------------------
 
 // POST /api/auth/register
-router.post("/register", authLimiter, validateAuthBody, async (req, res) => {
+router.post("/register", registerLimiter, validate(schemas.register), async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // 1. Check if user already exists
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     if (db.isMock()) {
       const users = db.getMockUsers();
-      const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-      if (exists) {
+      if (users.some(u => u.email === email)) {
         return res.status(400).json({ message: "Email is already registered." });
       }
-
-      // 2. Hash Password and store in-memory
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = {
-        id: "mock-user-" + Date.now(),
-        email: email.toLowerCase(),
-        password: hashedPassword
-      };
+      const newUser = { id: "mock-user-" + crypto.randomUUID(), email, password: hashedPassword };
       db.setMockUsers([newUser, ...users]);
-
       return res.status(201).json({
         message: "User registered successfully (In-Memory).",
         user: { id: newUser.id, email: newUser.email }
       });
     }
 
-    // MongoDB path
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
+    if (await User.exists({ email })) {
       return res.status(400).json({ message: "Email is already registered." });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      email: email.toLowerCase(),
-      password: hashedPassword
-    });
-
+    const user = await User.create({ email, password: hashedPassword });
     res.status(201).json({
       message: "User registered successfully.",
       user: { id: user._id, email: user.email }
@@ -146,48 +132,23 @@ router.post("/register", authLimiter, validateAuthBody, async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post("/login", authLimiter, validateAuthBody, async (req, res) => {
+router.post("/login", validate(schemas.login), loginIpLimiter, loginAccountLimiter, async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    let user;
+    const user = db.isMock()
+      ? db.getMockUsers().find(u => u.email === email)
+      : await User.findOne({ email });
 
-    if (db.isMock()) {
-      const users = db.getMockUsers();
-      user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (!user) {
-        return res.status(401).json({ message: "Invalid email or password." });
-      }
-
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: "Invalid email or password." });
-      }
-
-      const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-      return res.status(200).json({
-        message: "Login successful (In-Memory).",
-        token,
-        user: { id: user.id, email: user.email }
-      });
-    }
-
-    // MongoDB path
-    user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    const passwordOk = await bcrypt.compare(password, user ? user.password : DUMMY_HASH);
+    if (!user || !passwordOk) {
       return res.status(401).json({ message: "Invalid email or password." });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid email or password." });
-    }
-
-    const token = jwt.sign({ id: user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+    issueSession(res, user);
     res.status(200).json({
       message: "Login successful.",
-      token,
-      user: { id: user._id, email: user.email }
+      user: { id: String(user.id || user._id), email: user.email }
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -195,42 +156,61 @@ router.post("/login", authLimiter, validateAuthBody, async (req, res) => {
   }
 });
 
-// POST /api/auth/logout
-router.post("/logout", (req, res) => {
+// GET /api/auth/me - who is logged in (the frontend cannot read the httpOnly cookie itself)
+router.get("/me", requireAuth, (req, res) => {
+  res.status(200).json({ user: req.user });
+});
+
+// POST /api/auth/logout - revokes every session of this user and clears the cookie
+router.post("/logout", async (req, res) => {
+  try {
+    const token = req.cookies?.[COOKIE_NAME];
+    const user = token ? await verifySessionToken(token) : null;
+    if (user) await revokeSessions(user.id);
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+  clearSession(res);
   res.status(200).json({ message: "Logged out successfully." });
 });
 
 // -------------------------------------------------------------------
-// GOOGLE OAUTH ROUTES (with Sandbox Fallback)
+// GOOGLE OAUTH ROUTES (with development-only Sandbox Fallback)
 // -------------------------------------------------------------------
 
 // Initiate Google OAuth login
 router.get("/google", (req, res, next) => {
-  if (!hasGoogleKeys) {
-    // Redirect to Sandbox Simulator if Google client variables are not defined
-    return res.redirect((process.env.BACKEND_URL || "http://localhost:5000") + "/api/auth/sandbox/google");
+  if (hasGoogleKeys) {
+    return passport.authenticate("google", { scope: ["profile", "email"], session: false })(req, res, next);
   }
-  passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  if (sandboxAvailable()) {
+    return res.redirect(FRONTEND_URL + "/api/auth/sandbox/google");
+  }
+  res.redirect(`${FRONTEND_URL}/login?error=GoogleNotConfigured`);
 });
 
 // Callback for Google OAuth
-router.get(
-  "/google/callback",
-  passport.authenticate("google", { session: false, failureRedirect: (process.env.FRONTEND_URL || "http://localhost:5173") + "/login?error=OAuthFailed" }),
-  (req, res) => {
-    // Generate JWT for the authenticated user and redirect
-    const user = req.user;
-    const token = jwt.sign({ id: user.id || user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?token=${token}`);
-  }
-);
+if (hasGoogleKeys) {
+  router.get(
+    "/google/callback",
+    passport.authenticate("google", { session: false, failureRedirect: `${FRONTEND_URL}/login?error=OAuthFailed` }),
+    (req, res) => finishOAuth(res, req.user)
+  );
+}
 
 // -------------------------------------------------------------------
-// SANDBOX SIMULATED OAUTH CONTROLLERS
+// SANDBOX SIMULATED OAUTH CONTROLLERS (development + in-memory DB only, see sandboxAvailable)
 // -------------------------------------------------------------------
+const sandboxRouter = express.Router();
+sandboxRouter.use((req, res, next) => {
+  if (!sandboxAvailable()) {
+    return res.status(404).json({ message: "Route not found" });
+  }
+  next();
+});
 
 // Mock OAuth Consent Screen HTML page
-router.get("/sandbox/google", (req, res) => {
+sandboxRouter.get("/google", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -408,7 +388,7 @@ router.get("/sandbox/google", (req, res) => {
           </div>
           <button type="submit" class="btn btn-primary">Authorize & Sign In</button>
         </form>
-        <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=OAuthCancel" class="btn btn-secondary">Cancel</a>
+        <a href="${FRONTEND_URL}/login?error=OAuthCancel" class="btn btn-secondary">Cancel</a>
       </div>
     </body>
     </html>
@@ -416,36 +396,22 @@ router.get("/sandbox/google", (req, res) => {
 });
 
 // POST Callback for Sandbox OAuth
-router.post("/sandbox/google/callback", async (req, res) => {
-  const email = req.body.email || "mock-farmer@cropmind.com";
+sandboxRouter.post("/google/callback", loginIpLimiter, async (req, res) => {
+  const parsed = schemas.login.shape.email.safeParse(req.body.email || "mock-farmer@cropmind.com");
+  if (!parsed.success) {
+    return res.redirect(`${FRONTEND_URL}/login?error=SandboxOAuthFailed`);
+  }
   try {
-    let user;
-
-    if (db.isMock()) {
-      const users = db.getMockUsers();
-      user = users.find(u => u.email === email);
-      if (!user) {
-        user = {
-          id: "mock-oauth-" + Date.now(),
-          email,
-          password: await bcrypt.hash("sandbox-oauth-pass", 10),
-        };
-        db.setMockUsers([user, ...users]);
-      }
-    } else {
-      user = await User.findOne({ email });
-      if (!user) {
-        const hashedPassword = await bcrypt.hash("sandbox-oauth-pass", 10);
-        user = await User.create({ email, password: hashedPassword });
-      }
-    }
-
-    const token = jwt.sign({ id: user.id || user._id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
-    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?token=${token}`);
+    finishOAuth(res, await findOrCreateOAuthUser(parsed.data));
   } catch (err) {
     console.error("Sandbox OAuth Callback Error:", err);
-    res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/login?error=SandboxOAuthFailed`);
+    res.redirect(`${FRONTEND_URL}/login?error=SandboxOAuthFailed`);
   }
 });
+
+if (sandboxConfigured) {
+  console.warn("NOTE: Google OAuth keys missing. Sandbox OAuth (password-less sign-in) is available only while using the in-memory database.");
+  router.use("/sandbox", sandboxRouter);
+}
 
 module.exports = router;
