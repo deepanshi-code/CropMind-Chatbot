@@ -2,31 +2,6 @@ import React, { useState, useEffect } from "react";
 import { getCrops, diagnoseCrop } from "../services/api";
 import Toast from "../components/Toast";
 
-const MAX_PHOTO_DIMENSION = 1280;
-const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
-// Downscale and re-encode as JPEG in the browser: keeps uploads small on rural mobile data,
-// and re-encoding drops EXIF metadata such as the GPS location of the farm.
-const preparePhoto = (file) => new Promise((resolve, reject) => {
-  const url = URL.createObjectURL(file);
-  const img = new Image();
-  img.onload = () => {
-    const scale = Math.min(1, MAX_PHOTO_DIMENSION / Math.max(img.width, img.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-    URL.revokeObjectURL(url);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    resolve({ preview: dataUrl, mimeType: "image/jpeg", data: dataUrl.split(",")[1] });
-  };
-  img.onerror = () => {
-    URL.revokeObjectURL(url);
-    reject(new Error("Could not read the image."));
-  };
-  img.src = url;
-});
-
 export default function Advisor() {
   const [crops, setCrops] = useState([]);
   const [cropsLoading, setCropsLoading] = useState(false);
@@ -37,8 +12,6 @@ export default function Advisor() {
   const [symptoms, setSymptoms] = useState("");
   const [soilType, setSoilType] = useState("Loamy");
   const [wateringFrequency, setWateringFrequency] = useState("Medium");
-  const [language, setLanguage] = useState("en");
-  const [photo, setPhoto] = useState(null);
 
   // Status & Response states
   const [isLoading, setIsLoading] = useState(false);
@@ -84,26 +57,11 @@ export default function Advisor() {
   }, [isLoading]);
 
   const loadingMessages = [
-    "🌾 Sending crop details to the AI model...",
-    "🔬 Analysing described symptoms" + (photo ? " and photo..." : "..."),
-    "🧪 Drafting treatment and prevention steps...",
-    "💡 Preparing fertilizer and irrigation guidance..."
+    "🌾 Compiling Registered Crop parameters & history...",
+    "🔬 Cross-referencing leaf symptoms with botanical pathogen models...",
+    "🌦 Querying soil irrigation telemetry data...",
+    "💡 Generating optimized fertilizer and organic remedy instructions..."
   ];
-
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
-      triggerError("Unsupported Photo", "Please choose a JPEG, PNG or WebP image.");
-      return;
-    }
-    try {
-      setPhoto(await preparePhoto(file));
-    } catch (err) {
-      triggerError("Photo Error", err.message);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,8 +71,8 @@ export default function Advisor() {
       triggerError("Validation Error", "Crop name is required. Please select or enter a crop name.");
       return;
     }
-    if (!symptoms.trim() && !photo) {
-      triggerError("Validation Error", "Describe the observed symptoms or attach a photo of the affected plant.");
+    if (!symptoms || !symptoms.trim()) {
+      triggerError("Validation Error", "Please provide a description of observed crop symptoms.");
       return;
     }
 
@@ -128,9 +86,7 @@ export default function Advisor() {
         cropName: finalCropName.trim(),
         symptoms: symptoms.trim(),
         soilType,
-        wateringFrequency,
-        language,
-        ...(photo ? { image: { mimeType: photo.mimeType, data: photo.data } } : {})
+        wateringFrequency
       });
       setResult(data);
     } catch (err) {
@@ -160,7 +116,6 @@ export default function Advisor() {
     setResult(null);
     setSymptoms("");
     setCustomCropName("");
-    setPhoto(null);
     if (crops.length > 0) {
       setSelectedCrop(crops[0].name);
     } else {
@@ -254,36 +209,8 @@ export default function Advisor() {
                   placeholder="e.g. Lower leaves turning yellow with brown rings, plant growth is stunted and flowers are dropping."
                   value={symptoms}
                   onChange={(e) => setSymptoms(e.target.value)}
-                  maxLength={1500}
+                  required
                 ></textarea>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="crop-photo">Photo of Affected Plant (optional)</label>
-                <div className="photo-upload">
-                  <input
-                    id="crop-photo"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePhotoChange}
-                  />
-                  {photo && (
-                    <>
-                      <img src={photo.preview} alt="Selected crop" className="photo-preview" />
-                      <button type="button" className="photo-remove-btn" onClick={() => setPhoto(null)}>
-                        Remove
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="advice-language">Advice Language</label>
-                <select id="advice-language" value={language} onChange={(e) => setLanguage(e.target.value)}>
-                  <option value="en">English</option>
-                  <option value="hi">हिन्दी (Hindi)</option>
-                </select>
               </div>
 
               <button type="submit" className="btn-primary btn-block" disabled={isLoading}>
@@ -343,7 +270,7 @@ export default function Advisor() {
                     </span>
                   </div>
                   <div className="indicator-pill">
-                    <span className="label" title="The model&apos;s own rough estimate, not a measured accuracy">Model self-estimate</span>
+                    <span className="label">AI Confidence</span>
                     <div className="confidence-meter-container">
                       <div className="confidence-track">
                         <div 

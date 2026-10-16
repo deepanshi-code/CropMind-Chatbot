@@ -1,16 +1,10 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import Loader from "./Loader";
 
 export default function ProtectedRoute({ children }) {
-  const { user, loading } = useAuth();
+  const token = localStorage.getItem("cropmind_token");
 
-  if (loading) {
-    return <Loader text="Checking your session..." />;
-  }
-
-  if (!user) {
+  if (!token) {
     return <Navigate to="/login" replace />;
   }
 

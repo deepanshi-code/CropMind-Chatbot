@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { loginUser, registerUser, googleLoginUrl } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import { loginUser, registerUser } from "../services/api";
 
 export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, refresh } = useAuth();
 
   // Mode: "login" or "register"
   const [mode, setMode] = useState("login");
@@ -17,23 +15,19 @@ export default function Login() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
-  // Already signed in (e.g. after the Google OAuth redirect set the session cookie)
+  // Handle URL tokens redirected from Google / Sandbox OAuth callback
   useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
-  }, [user, navigate]);
-
-  // Show errors passed back by the OAuth flow
-  useEffect(() => {
+    const token = searchParams.get("token");
     const oauthError = searchParams.get("error");
-    if (oauthError) {
-      const oauthErrorMessages = {
-        OAuthCancel: "User cancelled request",
-        GoogleNotConfigured: "Google sign-in is not configured on this server. Please use email and password.",
-        SessionExpired: "Your session expired. Please log in again.",
-      };
-      setErrorMsg(`Authentication failed: ${oauthErrorMessages[oauthError] || oauthError}`);
+
+    if (token) {
+      localStorage.setItem("cropmind_token", token);
+      window.dispatchEvent(new Event("auth-change"));
+      navigate("/dashboard", { replace: true });
+    } else if (oauthError) {
+      setErrorMsg(`Authentication failed: ${oauthError === "OAuthCancel" ? "User cancelled request" : oauthError}`);
     }
-  }, [searchParams]);
+  }, [searchParams, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,9 +39,9 @@ export default function Login() {
 
     try {
       if (mode === "login") {
-        await loginUser(email, password);
-        // The server set the httpOnly session cookie; load the user into the auth context.
-        await refresh();
+        const data = await loginUser(email, password);
+        localStorage.setItem("cropmind_token", data.token);
+        window.dispatchEvent(new Event("auth-change"));
         navigate("/dashboard", { replace: true });
       } else {
         await registerUser(email, password);
@@ -66,7 +60,7 @@ export default function Login() {
 
   const handleOAuthLogin = () => {
     // Redirect browser to backend Google OAuth initiation route
-    window.location.href = googleLoginUrl();
+    window.location.href = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/auth/google`;
   };
 
   return (
@@ -110,11 +104,9 @@ export default function Login() {
               <input
                 id="login-password"
                 type="password"
-                placeholder={mode === "register" ? "At least 8 characters" : "••••••••"}
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                minLength={mode === "register" ? 8 : undefined}
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
                 required
               />
             </div>

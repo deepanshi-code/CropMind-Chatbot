@@ -11,11 +11,6 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
-  },
-  // Embedded in every session token; incrementing it (on logout) revokes all existing sessions.
-  tokenVersion: {
-    type: Number,
-    default: 0
   }
 }, {
   timestamps: true

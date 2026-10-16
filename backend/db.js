@@ -1,33 +1,47 @@
 const mongoose = require("mongoose");
-const { isProduction } = require("./config");
+const Crop = require("./models/Crop");
 
 let isMockDB = false;
 
-// Local in-memory store for development without MongoDB. Records carry an owner id,
-// so each user starts with an empty catalog, same as in MongoDB mode.
-let mockCrops = [];
-let mockTelemetry = [];
+// Safe local in-memory fallback store
+let mockCrops = [
+  { id: "mock-1", name: "Wheat", season: "Rabi", water: "Medium" },
+  { id: "mock-2", name: "Rice", season: "Kharif", water: "High" }
+];
+
+let mockTelemetry = [
+  { id: "mock-t1", time: "20:40:01", type: "system", text: "Sensor logs initialized (Mock DB Mode)." },
+  { id: "mock-t2", time: "20:40:15", type: "info", text: "Database: Local MongoDB connection timed out. Running in Mock Mode." },
+  { id: "mock-t3", time: "20:41:00", type: "success", text: "System: Local in-memory crop registry prepared." }
+];
+
 let mockUsers = [];
+
 
 const connectDB = async () => {
   const mongoURI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cropmind";
-
+  
   try {
     // Attempt connection with a short timeout to prevent blocking dev server startup
     await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: isProduction ? 15000 : 3000
+      serverSelectionTimeoutMS: 3000
     });
     console.log("MongoDB connected successfully.");
-  } catch (error) {
-    if (isProduction) {
-      // Falling back to memory in production would silently lose every account and crop on restart.
-      console.error("FATAL: Could not connect to MongoDB in production:", error.message);
-      process.exit(1);
+    
+    // Seed initial crops if database is empty
+    const count = await Crop.countDocuments();
+    if (count === 0) {
+      await Crop.create([
+        { name: "Wheat", season: "Rabi", water: "Medium" },
+        { name: "Rice", season: "Kharif", water: "High" }
+      ]);
+      console.log("MongoDB seeded successfully with initial crops.");
     }
+  } catch (error) {
     console.log("-------------------------------------------------------------------");
     console.warn("⚠️  DATABASE CONNECTION WARNING:");
-    console.warn("Could not connect to MongoDB.");
-    console.warn("Backend will boot in IN-MEMORY MOCK MODE for development. Data is lost on restart.");
+    console.warn(`Could not connect to MongoDB at "${mongoURI}".`);
+    console.warn("Backend will boot in IN-MEMORY MOCK MODE for development.");
     console.warn("Define MONGO_URI in your backend `.env` file to connect a real database.");
     console.log("-------------------------------------------------------------------");
     isMockDB = true;

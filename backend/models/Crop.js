@@ -1,12 +1,6 @@
 const mongoose = require("mongoose");
 
 const cropSchema = new mongoose.Schema({
-  // Id of the user who owns this record; every query filters on it.
-  owner: {
-    type: String,
-    required: true,
-    index: true
-  },
   name: {
     type: String,
     required: true,

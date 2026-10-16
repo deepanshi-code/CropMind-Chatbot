@@ -1,6 +1,5 @@
-import React, { useState, lazy, Suspense } from "react";
-import { BrowserRouter as Router, Routes, Route, Link, NavLink, useNavigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import React, { useState, lazy, Suspense, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Link, NavLink } from "react-router-dom";
 import ThemeToggle from "./components/ThemeToggle";
 import ChatAssistant from "./components/ChatAssistant";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,22 +22,38 @@ function LoadingScreen() {
   );
 }
 
-export default function App() {
-  return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <Router>
-          <AppShell />
-        </Router>
-      </AuthProvider>
-    </ErrorBoundary>
-  );
+function getUserEmail() {
+  const token = localStorage.getItem("cropmind_token");
+  if (!token) return "";
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      window
+        .atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload).email || "Farmer User";
+  } catch (e) {
+    console.error("Error parsing auth token payload", e);
+    return "Farmer User";
+  }
 }
 
-function AppShell() {
+export default function App() {
   const [theme, setTheme] = useState("dark");
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("cropmind_token"));
+
+  // Synchronize authentication state across components
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setIsLoggedIn(!!localStorage.getItem("cropmind_token"));
+    };
+    window.addEventListener("auth-change", handleAuthChange);
+    return () => window.removeEventListener("auth-change", handleAuthChange);
+  }, []);
 
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
@@ -52,12 +67,15 @@ function AppShell() {
     }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
+  const handleLogout = () => {
+    localStorage.removeItem("cropmind_token");
+    setIsLoggedIn(false);
+    window.dispatchEvent(new Event("auth-change"));
   };
 
   return (
+    <ErrorBoundary>
+      <Router>
         <div className="app-container">
           {/* Navigation Bar */}
           <nav className="navbar">
@@ -78,11 +96,11 @@ function AppShell() {
               <NavLink to="/telemetry" className={({ isActive }) => isActive ? "active-link" : ""}>Telemetry</NavLink>
               <NavLink to="/advisor" className={({ isActive }) => isActive ? "active-link" : ""}>AI Advisor</NavLink>
               <NavLink to="/about" className={({ isActive }) => isActive ? "active-link" : ""}>About</NavLink>
-              {user ? (
+              {isLoggedIn ? (
                 <div className="nav-user-container">
                   <div className="user-profile-badge">
                     <span className="user-avatar-icon">👤</span>
-                    <span className="user-email">{user.email}</span>
+                    <span className="user-email">{getUserEmail()}</span>
                   </div>
                   <button 
                     onClick={handleLogout} 
@@ -141,5 +159,7 @@ function AppShell() {
             <p>&copy; {new Date().getFullYear()} CropMind Smart Farming Portal. Developed for Agriculture Telemetry.</p>
           </footer>
         </div>
+      </Router>
+    </ErrorBoundary>
   );
 }

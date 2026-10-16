@@ -11,7 +11,7 @@ export default function Home() {
           <span className="badge-featured">AI-Powered Farming Intelligence</span>
           <h1>Empower Your Fields with CropMind</h1>
           <p>
-            Get insights on crop health, weather forecasts, and market trends
+            Get real-time insights on crop health, weather forecasts, and market trends
             using next-generation generative AI.
           </p>
           <div className="hero-actions">
