@@ -73,7 +73,7 @@ class Client {
 
 async function registerAndLogin(baseUrl, email, password = "correct-horse-1") {
   const client = new Client(baseUrl);
-  const reg = await client.post("/api/auth/register", { email, password });
+  const reg = await client.post("/api/auth/register", { email, password, acceptPrivacy: true });
   if (reg.status !== 201) throw new Error(`register failed: ${reg.status} ${JSON.stringify(reg.data)}`);
   const login = await client.post("/api/auth/login", { email, password });
   if (login.status !== 200) throw new Error(`login failed: ${login.status} ${JSON.stringify(login.data)}`);

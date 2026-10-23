@@ -21,7 +21,10 @@ const cropSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: ["Low", "Medium", "High"]
-  }
+  },
+  sowingDate: { type: Date },
+  areaAcres: { type: Number, min: 0, max: 100000 },
+  notes: { type: String, trim: true, maxlength: 300 }
 }, {
   timestamps: true
 });

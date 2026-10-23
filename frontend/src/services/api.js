@@ -30,84 +30,57 @@ api.interceptors.response.use(
   }
 );
 
+/** The server's error message, or a fallback. */
+export const errorMessage = (err, fallback) => err?.response?.data?.message || fallback;
+
 export const googleLoginUrl = () => `${API_BASE_URL}/auth/google`;
 
-export const getCurrentUser = async () => {
-  const response = await api.get("/auth/me");
-  return response.data.user;
-};
+// --- Auth ---
+export const getCurrentUser = async () => (await api.get("/auth/me")).data.user;
+export const registerUser = async (email, password, acceptPrivacy) =>
+  (await api.post("/auth/register", { email, password, acceptPrivacy })).data;
+export const loginUser = async (email, password) => (await api.post("/auth/login", { email, password })).data;
+export const logoutUser = async () => { await api.post("/auth/logout"); };
 
-export const registerUser = async (email, password) => {
-  const response = await api.post("/auth/register", { email, password });
-  return response.data;
-};
+// --- Profile / account ---
+export const getProfile = async () => (await api.get("/profile")).data;
+export const updateProfile = async (patch) => (await api.put("/profile", patch)).data;
+export const saveSoilTest = async (soilTest) => (await api.put("/profile/soil-test", soilTest)).data;
+export const clearSoilTest = async () => (await api.delete("/profile/soil-test")).data;
+export const changePassword = async (currentPassword, newPassword) =>
+  (await api.post("/profile/password", { currentPassword, newPassword })).data;
+export const exportMyData = async () => (await api.get("/profile/export")).data;
+export const deleteAccount = async (confirmation) => (await api.delete("/profile", { data: { confirmation } })).data;
 
-export const loginUser = async (email, password) => {
-  const response = await api.post("/auth/login", { email, password });
-  return response.data;
-};
+// --- Sensor devices ---
+export const listDevices = async () => (await api.get("/devices")).data;
+export const createDevice = async (name) => (await api.post("/devices", { name })).data;
+export const deleteDevice = async (id) => { await api.delete(`/devices/${id}`); };
 
-export const logoutUser = async () => {
-  await api.post("/auth/logout");
-};
+// --- Crops ---
+export const getCrops = async () => (await api.get("/crops")).data;
+export const createCrop = async (cropData) => (await api.post("/crops", cropData)).data;
+export const deleteCrop = async (id) => { await api.delete(`/crops/${id}`); };
+export const updateCrop = async (id, cropData) => (await api.put(`/crops/${id}`, cropData)).data;
+export const searchCrops = async (name) => (await api.get(`/crops/search/${encodeURIComponent(name)}`)).data;
 
-export const getCrops = async () => {
-  const response = await api.get("/crops");
-  return response.data;
-};
+// --- AI ---
+export const sendMessageToAI = async (message, language = "en") =>
+  (await api.post("/ai/chat", { message, language })).data;
+export const getChatHistory = async () => (await api.get("/ai/chat/history")).data;
+export const clearChatHistory = async () => { await api.delete("/ai/chat/history"); };
+export const diagnoseCrop = async (diagnosticData) =>
+  (await api.post("/ai/diagnose", diagnosticData, { timeout: 60000 })).data;
+export const getDiagnoses = async () => (await api.get("/ai/diagnoses")).data;
+export const deleteDiagnosis = async (id) => { await api.delete(`/ai/diagnoses/${id}`); };
 
-export const createCrop = async (cropData) => {
-  const response = await api.post("/crops", cropData);
-  return response.data;
-};
+// --- Telemetry ---
+export const getTelemetryLogs = async () => (await api.get("/telemetry")).data;
 
-export const deleteCrop = async (id) => {
-  await api.delete(`/crops/${id}`);
-};
-
-export const updateCrop = async (id, cropData) => {
-  const response = await api.put(`/crops/${id}`, cropData);
-  return response.data;
-};
-
-export const searchCrops = async (name) => {
-  const response = await api.get(`/crops/search/${encodeURIComponent(name)}`);
-  return response.data;
-};
-
-/**
- * @param {string} message
- * @param {Array<{role: "user"|"assistant", text: string}>} history earlier turns, oldest first
- * @param {"en"|"hi"} language reply language
- */
-export const sendMessageToAI = async (message, history = [], language = "en") => {
-  const response = await api.post("/ai/chat", { message, history, language });
-  return response.data;
-};
-
-export const diagnoseCrop = async (diagnosticData) => {
-  const response = await api.post("/ai/diagnose", diagnosticData, { timeout: 60000 });
-  return response.data;
-};
-
-export const getTelemetryLogs = async () => {
-  const response = await api.get("/telemetry");
-  return response.data;
-};
-
-export const createTelemetryLog = async (logData) => {
-  const response = await api.post("/telemetry", logData);
-  return response.data;
-};
-
-export const getWeatherInsight = async (lat, lon) => {
-  const response = await api.get("/insights/weather", { params: { lat, lon } });
-  return response.data;
-};
-
-export const getMandiInsight = async (commodity = "Wheat", state) => {
-  const response = await api.get("/insights/mandi", { params: { commodity, state } });
-  return response.data;
-};
+// --- Field insights ---
+export const getWeatherInsight = async (lat, lon) => (await api.get("/insights/weather", { params: { lat, lon } })).data;
+export const getMandiInsight = async (commodity = "Wheat", state) =>
+  (await api.get("/insights/mandi", { params: { commodity, state } })).data;
+export const searchPlaces = async (q, lang = "en") => (await api.get("/insights/places", { params: { q, lang } })).data;
 
 export default api;

@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function Toast({ toast, onClose }) {
-  if (!toast || !toast.message) return null;
+  if (!toast || (!toast.message && !toast.title)) return null;
 
   const type = toast.type || "info"; // "success", "error", "info"
 
@@ -32,14 +32,14 @@ export default function Toast({ toast, onClose }) {
   };
 
   return (
-    <div className="toast-overlay animate-fade-in">
+    <div className="toast-overlay animate-fade-in" role={toast.type === "error" ? "alert" : "status"}>
       <div className={`toast-card ${type}`}>
         <div className="toast-icon">{getIcon()}</div>
         <div className="toast-content">
-          <h4>{toast.title || (type === "error" ? "System Error" : type === "success" ? "Success" : "Notification")}</h4>
-          <p>{toast.message}</p>
+          <h4>{toast.title}</h4>
+          {toast.message && <p>{toast.message}</p>}
         </div>
-        <button className="toast-close" onClick={onClose} aria-label="Close Toast">
+        <button className="toast-close" onClick={onClose} aria-label="Close">
           &times;
         </button>
       </div>

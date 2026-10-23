@@ -16,6 +16,8 @@ const telemetryLogSchema = new mongoose.Schema({
     required: true,
     enum: ["system", "info", "success", "warning"]
   },
+  // Name of the sensor device that sent the log (absent for logs added by the user).
+  source: { type: String, trim: true, maxlength: 40 },
   text: {
     type: String,
     required: true,

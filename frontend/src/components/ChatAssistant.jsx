@@ -1,62 +1,113 @@
 import React, { useState, useEffect, useRef } from "react";
-import { sendMessageToAI } from "../services/api";
+import { Link } from "react-router-dom";
+import { sendMessageToAI, getChatHistory, clearChatHistory, errorMessage } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-
-const MAX_HISTORY = 10;
-const LANGUAGE_KEY = "cropmind_chat_language";
-
-const GREETINGS = {
-  en: "Hello! I'm CropMind AI. Ask me about crops, weather, irrigation, or market prices in India.",
-  hi: "नमस्ते! मैं CropMind AI हूँ। फसल, मौसम, सिंचाई या मंडी भाव के बारे में पूछें।",
-};
+import { useLanguage } from "../i18n/LanguageContext";
 
 // Browser speech-to-text (Chrome / Edge / Android); hidden where unsupported.
 const SpeechRecognition = typeof window !== "undefined"
   ? window.SpeechRecognition || window.webkitSpeechRecognition
   : null;
 
-const readSavedLanguage = () => {
-  try {
-    return localStorage.getItem(LANGUAGE_KEY) === "hi" ? "hi" : "en";
-  } catch {
-    return "en";
-  }
-};
+// Minimal markdown: **bold**, "* " / "- " bullet lists, ## / ### headings.
+const inline = (text) => text.split(/\*\*(.*?)\*\*/g).map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
 
-const greetingFor = (language, email) => ({
-  sender: "bot",
-  greeting: true,
-  text: email && language === "en" ? GREETINGS.en.replace("Hello!", `Hello, ${email}!`) : GREETINGS[language],
-});
+function MessageContent({ text }) {
+  const elements = [];
+  let items = [];
+  const flush = (key) => {
+    if (items.length) elements.push(<ul key={`ul-${key}`}>{items}</ul>);
+    items = [];
+  };
+  text.split("\n").forEach((line, idx) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
+      items.push(<li key={idx}>{inline(trimmed.slice(2))}</li>);
+      return;
+    }
+    flush(idx);
+    if (trimmed.startsWith("### ")) elements.push(<h4 key={idx}>{inline(trimmed.slice(4))}</h4>);
+    else if (trimmed.startsWith("## ")) elements.push(<h3 key={idx}>{inline(trimmed.slice(3))}</h3>);
+    else if (trimmed) elements.push(<p key={idx}>{inline(trimmed)}</p>);
+  });
+  flush("end");
+  return <>{elements}</>;
+}
+
+const BotIcon = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <rect x="3" y="11" width="18" height="10" rx="2"></rect>
+    <circle cx="12" cy="5" r="2"></circle>
+    <path d="M12 7v4M8 15h.01M16 15h.01"></path>
+  </svg>
+);
 
 export default function ChatAssistant() {
   const { user } = useAuth();
-  const userEmail = user?.email || "";
+  const { t, language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
-  const [language, setLanguage] = useState(readSavedLanguage);
-  const [messages, setMessages] = useState(() => [greetingFor(readSavedLanguage(), "")]);
+  const [messages, setMessages] = useState([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-
-  const messagesEndRef = useRef(null);
+  const bodyRef = useRef(null);
+  const inputRef = useRef(null);
   const recognitionRef = useRef(null);
 
-  // A new user (login, logout, account switch) starts a fresh conversation.
-  useEffect(() => {
-    setMessages([greetingFor(language, userEmail)]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmail]);
+  const greeting = user?.name ? t("chat.greetingName", { name: user.name }) : t("chat.greeting");
 
-  const toggleLanguage = () => {
-    const next = language === "en" ? "hi" : "en";
-    setLanguage(next);
-    try {
-      localStorage.setItem(LANGUAGE_KEY, next);
-    } catch {
-      // storage unavailable (private mode); the choice still applies for this visit
+  // A different user (login, logout, switch) gets their own saved conversation.
+  useEffect(() => {
+    setMessages([]);
+    setHistoryLoaded(false);
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !user || historyLoaded) return;
+    getChatHistory()
+      .then((saved) => setMessages(saved.map((m) => ({ role: m.role, text: m.text }))))
+      .catch(() => {})
+      .finally(() => setHistoryLoaded(true));
+  }, [isOpen, user, historyLoaded]);
+
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
+  }, [messages, isLoading, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) inputRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => () => recognitionRef.current?.abort(), []);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || isLoading) return;
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", text }]);
+    if (!user) {
+      setMessages((prev) => [...prev, { role: "assistant", text: t("chat.loginRequired"), local: true }]);
+      return;
     }
-    setMessages((prev) => (prev.length === 1 && prev[0].greeting ? [greetingFor(next, userEmail)] : prev));
+    setIsLoading(true);
+    try {
+      const data = await sendMessageToAI(text, language);
+      setMessages((prev) => [...prev, { role: "assistant", text: data.reply }]);
+    } catch (err) {
+      setMessages((prev) => [...prev, { role: "assistant", text: errorMessage(err, t("chat.error")), local: true }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startNewConversation = async () => {
+    try {
+      await clearChatHistory();
+      setMessages([]);
+    } catch {
+      // keep the current conversation if clearing failed
+    }
   };
 
   const toggleListening = () => {
@@ -80,217 +131,77 @@ export default function ChatAssistant() {
     recognition.start();
   };
 
-  useEffect(() => () => recognitionRef.current?.abort(), []);
-
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, isLoading, isOpen]);
-
-  const parseInlineMarkdown = (text) => {
-    const parts = text.split(/\*\*(.*?)\*\*/g);
-    return parts.map((part, index) => {
-      if (index % 2 === 1) {
-        return <strong key={index}>{part}</strong>;
-      }
-      return part;
-    });
-  };
-
-  const renderMessageContent = (text) => {
-    if (!text) return null;
-    const lines = text.split("\n");
-    
-    const elements = [];
-    let listItems = [];
-
-    lines.forEach((line, idx) => {
-      const trimmed = line.trim();
-      
-      if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
-        const itemContent = trimmed.substring(2);
-        listItems.push(<li key={`li-${idx}`}>{parseInlineMarkdown(itemContent)}</li>);
-      } else {
-        if (listItems.length > 0) {
-          elements.push(<ul key={`ul-${idx}`}>{listItems}</ul>);
-          listItems = [];
-        }
-        
-        if (trimmed.startsWith("### ")) {
-          elements.push(<h4 key={idx}>{parseInlineMarkdown(trimmed.substring(4))}</h4>);
-        } else if (trimmed.startsWith("## ")) {
-          elements.push(<h3 key={idx}>{parseInlineMarkdown(trimmed.substring(3))}</h3>);
-        } else if (trimmed === "") {
-          elements.push(<div key={idx} className="chat-spacer" />);
-        } else {
-          elements.push(<p key={idx}>{parseInlineMarkdown(trimmed)}</p>);
-        }
-      }
-    });
-
-    if (listItems.length > 0) {
-      elements.push(<ul key={`ul-end`}>{listItems}</ul>);
-    }
-
-    return elements;
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
-
-    const userText = input.trim();
-    // Earlier real turns (no greeting, no error notices) give the model context for follow-ups.
-    const history = messages
-      .filter((msg) => !msg.greeting && !msg.error)
-      .slice(-MAX_HISTORY)
-      .map((msg) => ({ role: msg.sender === "bot" ? "assistant" : "user", text: msg.text }));
-
-    setMessages((prev) => [...prev, { sender: "user", text: userText }]);
-    setInput("");
-
-    if (!user) {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "bot", error: true, text: "Please **log in** to chat with CropMind AI. This keeps the AI service from being misused." }
-      ]);
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const data = await sendMessageToAI(userText, history, language);
-      setMessages((prev) => [...prev, { sender: "bot", text: data.reply }]);
-    } catch (error) {
-      console.error("Chat message error:", error);
-      const serverMessage = error.response?.data?.message;
-      setMessages((prev) => [
-        ...prev,
-        { sender: "bot", error: true, text: serverMessage || "Sorry, CropMind AI is currently having trouble reaching the server. Please check your backend connection." }
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
-      handleSend();
-    }
-  };
-
   return (
     <>
-      {/* Floating Toggle Button */}
-      <button 
-        className={`chat-toggle ${isOpen ? "open" : ""}`} 
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label="Toggle AI Assistant"
+      <button
+        type="button"
+        className={`chat-toggle ${isOpen ? "open" : ""}`}
+        onClick={() => setIsOpen((open) => !open)}
+        aria-expanded={isOpen}
+        aria-controls="chat-window"
+        aria-label={isOpen ? t("chat.close") : t("chat.open")}
       >
         {isOpen ? (
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"></path></svg>
         ) : (
-          <svg viewBox="0 0 24 24" width="20" height="20">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
         )}
-        <span className="chat-label">{isOpen ? "Close" : "AI Assistant"}</span>
+        <span className="chat-label">{isOpen ? t("common.close") : t("chat.open")}</span>
       </button>
 
-      {/* Floating Chat Window */}
       {isOpen && (
-        <div className="chat-window">
+        <div className="chat-window" id="chat-window" role="dialog" aria-label={t("chat.title")}>
           <div className="chat-header">
-            <div className="chat-header-avatar">
-              <svg viewBox="0 0 24 24" width="22" height="22">
-                <rect x="3" y="11" width="18" height="10" rx="2"></rect>
-                <circle cx="12" cy="5" r="2"></circle>
-                <path d="M12 7v4M8 15h.01M16 15h.01"></path>
-              </svg>
-            </div>
+            <div className="chat-header-avatar" aria-hidden="true"><BotIcon /></div>
             <div>
-              <h3>CropMind AI</h3>
+              <h3>{t("chat.title")}</h3>
               <div className="chat-status-block">
-                <span className="pulse-dot"></span>
-                <span className="chat-status">Online Assistant</span>
+                <span className="pulse-dot" aria-hidden="true"></span>
+                <span className="chat-status">{language === "hi" ? t("chat.replyLangHi") : t("chat.replyLang")}</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="chat-lang-toggle"
-              onClick={toggleLanguage}
-              aria-label={language === "en" ? "Switch replies to Hindi" : "Switch replies to English"}
-              title={language === "en" ? "Reply in Hindi" : "Reply in English"}
-            >
-              {language === "en" ? "हिं" : "EN"}
-            </button>
+            {user && messages.length > 0 && (
+              <button type="button" className="chat-lang-toggle" onClick={startNewConversation} title={t("chat.clear")} aria-label={t("chat.clear")}>
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+              </button>
+            )}
           </div>
 
-          <div className="chat-body">
+          <div className="chat-body" ref={bodyRef} aria-live="polite">
+            <div className="bot-msg">
+              <div className="msg-avatar" aria-hidden="true"><BotIcon /></div>
+              <div className="msg-content">
+                <p>{greeting}</p>
+                {!user && <p><Link to="/login">{t("nav.login")}</Link></p>}
+              </div>
+            </div>
             {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={msg.sender === "bot" ? "bot-msg" : "user-msg"}
-              >
-                <div className="msg-avatar">
-                  {msg.sender === "bot" ? (
-                    <svg viewBox="0 0 24 24" width="16" height="16">
-                      <rect x="3" y="11" width="18" height="10" rx="2"></rect>
-                      <circle cx="12" cy="5" r="2"></circle>
-                      <path d="M12 7v4M8 15h.01M16 15h.01"></path>
-                    </svg>
-                  ) : (
-                    userEmail ? (
-                      <span className="user-avatar-initials" title={userEmail}>
-                        {userEmail.substring(0, 2).toUpperCase()}
-                      </span>
-                    ) : (
-                      <svg viewBox="0 0 24 24" width="16" height="16">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                    )
-                  )}
+              <div key={index} className={msg.role === "assistant" ? "bot-msg" : "user-msg"}>
+                <div className="msg-avatar" aria-hidden="true">
+                  {msg.role === "assistant" ? <BotIcon /> : <span className="user-avatar-initials">{(user?.name || user?.email || "?").substring(0, 2).toUpperCase()}</span>}
                 </div>
-                <div className="msg-content">
-                  {renderMessageContent(msg.text)}
-                </div>
+                <div className="msg-content"><MessageContent text={msg.text} /></div>
               </div>
             ))}
-
             {isLoading && (
-              <div className="bot-msg typing-msg">
-                <div className="msg-avatar">
-                  <svg viewBox="0 0 24 24" width="16" height="16">
-                    <rect x="3" y="11" width="18" height="10" rx="2"></rect>
-                    <circle cx="12" cy="5" r="2"></circle>
-                    <path d="M12 7v4M8 15h.01M16 15h.01"></path>
-                  </svg>
-                </div>
-                <div className="msg-content">
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                </div>
+              <div className="bot-msg typing-msg" role="status">
+                <div className="msg-avatar" aria-hidden="true"><BotIcon /></div>
+                <div className="msg-content"><div className="typing-indicator"><span></span><span></span><span></span></div></div>
               </div>
             )}
-            <div ref={messagesEndRef} />
           </div>
 
-          <div className="chat-input">
+          <form className="chat-input" onSubmit={(e) => { e.preventDefault(); handleSend(); }}>
+            <label htmlFor="chat-input-field" className="visually-hidden">{t("chat.placeholder")}</label>
             <input
+              id="chat-input-field"
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder={language === "hi" ? "फसल, मिट्टी, मौसम के बारे में पूछें..." : "Ask about crops, soils, weather..."}
+              placeholder={t("chat.placeholder")}
               maxLength={1000}
               disabled={isLoading}
+              autoComplete="off"
             />
             {SpeechRecognition && (
               <button
@@ -298,27 +209,23 @@ export default function ChatAssistant() {
                 onClick={toggleListening}
                 disabled={isLoading}
                 className={`chat-mic-btn ${isListening ? "listening" : ""}`}
-                aria-label={isListening ? "Stop voice input" : "Start voice input"}
-                title={isListening ? "Listening... click to stop" : "Speak your question"}
+                aria-label={isListening ? t("chat.micStop") : t("chat.micStart")}
+                aria-pressed={isListening}
+                title={isListening ? t("chat.micStop") : t("chat.micStart")}
               >
-                <svg viewBox="0 0 24 24" width="16" height="16">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                   <rect x="9" y="2" width="6" height="12" rx="3"></rect>
                   <path d="M5 10a7 7 0 0 0 14 0M12 17v5"></path>
                 </svg>
               </button>
             )}
-            <button 
-              onClick={handleSend} 
-              disabled={isLoading || !input.trim()}
-              className="chat-send-btn"
-              aria-label="Send Message"
-            >
-              <svg viewBox="0 0 24 24" width="16" height="16">
+            <button type="submit" disabled={isLoading || !input.trim()} className="chat-send-btn" aria-label={t("chat.send")}>
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                 <line x1="22" y1="2" x2="11" y2="13"></line>
                 <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
               </svg>
             </button>
-          </div>
+          </form>
         </div>
       )}
     </>

@@ -1,69 +1,49 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useLanguage } from "../i18n/LanguageContext";
+
+const FEATURES = [
+  ["home.f1", "M20 17.58A5 5 0 0 0 18 8h-1.26A8 8 0 1 0 4 16.25M8 16v6M12 18v4M16 16v6"],
+  ["home.f2", "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zM9 12l2 2 4-4"],
+  ["home.f3", "M3 20h18M5 20c0-6 3-10 7-10s7 4 7 10M12 10V4"],
+];
 
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { t } = useLanguage();
+  const notice = location.state?.notice;
 
   return (
     <div className="home-container">
-      <section className="hero">
-        <div className="hero-content animate-fade-in-up">
-          <span className="badge-featured">AI-Powered Farming Intelligence</span>
-          <h1>Empower Your Fields with CropMind</h1>
-          <p>
-            Get insights on crop health, weather forecasts, and market trends
-            using next-generation generative AI.
-          </p>
+      {notice && <p className="state-message success-message page-notice" role="status">{notice}</p>}
+      <section className="hero" aria-labelledby="hero-title">
+        <div className="hero-content">
+          <span className="badge-featured">{t("home.badge")}</span>
+          <h1 id="hero-title">{t("home.title")}</h1>
+          <p>{t("home.subtitle")}</p>
           <div className="hero-actions">
-            <button onClick={() => navigate("/dashboard")} className="btn-primary">
-              Launch Dashboard
-            </button>
-            <button onClick={() => navigate("/about")} className="btn-secondary">
-              Learn More
-            </button>
+            <button type="button" onClick={() => navigate("/dashboard")} className="btn-primary">{t("home.launch")}</button>
+            <button type="button" onClick={() => navigate("/about")} className="btn-secondary">{t("home.learn")}</button>
           </div>
         </div>
       </section>
 
-      <section className="features-section">
-        <div className="section-header animate-fade-in">
-          <h2>Farming Capabilities</h2>
-          <p>Tools designed to increase yield, conserve water, and boost profits.</p>
+      <section className="features-section" aria-labelledby="features-title">
+        <div className="section-header">
+          <h2 id="features-title">{t("home.featuresTitle")}</h2>
+          <p>{t("home.featuresSub")}</p>
         </div>
-
         <div className="cards grid-3">
-          <div className="card feature-card animate-fade-in-up delay-1">
-            <div className="feature-icon-container">
-              <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none">
-                <path d="M18.61 21.28A6 6 0 1 0 6 20h12a4 4 0 0 0 .61-.72z"></path>
-                <path d="M12 2v2M4.93 4.93l1.41 1.41M19.07 4.93l-1.41 1.41"></path>
-                <path d="M22 22a8 8 0 0 0-16 0"></path>
-              </svg>
+          {FEATURES.map(([key, path]) => (
+            <div key={key} className="card feature-card">
+              <div className="feature-icon-container" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none"><path d={path}></path></svg>
+              </div>
+              <h3>{t(`${key}.title`)}</h3>
+              <p>{t(`${key}.text`)}</p>
             </div>
-            <h3>Weather Forecast</h3>
-            <p>7-day hyperlocal forecast tailored specifically for farm planning and harvesting schedules.</p>
-          </div>
-
-          <div className="card feature-card animate-fade-in-up delay-2">
-            <div className="feature-icon-container">
-              <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2.5" fill="none">
-                <path d="M7 20h10M12 20V10M12 10a6 6 0 0 1 6-6M12 10a6 6 0 0 0-6-6"></path>
-              </svg>
-            </div>
-            <h3>Crop Advisories</h3>
-            <p>Get instant recommendations on fertilizer usage, pest control, and soil enrichment.</p>
-          </div>
-
-          <div className="card feature-card animate-fade-in-up delay-3">
-            <div className="feature-icon-container">
-              <svg viewBox="0 0 24 24" width="28" height="28" stroke="currentColor" strokeWidth="2" fill="none">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                <polyline points="17 6 23 6 23 12"></polyline>
-              </svg>
-            </div>
-            <h3>Market Prices</h3>
-            <p>Stay ahead of fluctuations with live crop market prices across APMC mandis in India.</p>
-          </div>
+          ))}
         </div>
       </section>
     </div>

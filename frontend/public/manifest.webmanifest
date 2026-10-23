@@ -1,0 +1,16 @@
+{
+  "name": "CropMind – AI Farming Assistant",
+  "short_name": "CropMind",
+  "description": "Track crops, local weather and soil moisture, and get AI crop advice in English or Hindi.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050b14",
+  "theme_color": "#050b14",
+  "lang": "en-IN",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

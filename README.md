@@ -31,12 +31,15 @@ CropMind is an advanced smart agricultural intelligence platform designed to emp
 ---
 
 ## Features
-* **Crop Catalog Registry**: CRUD capabilities to add, update, and remove crops. Each crop belongs to the user who created it. Crop data is persisted directly in MongoDB (or a safe in-memory database fallback during local testing).
-* **Field Conditions**: Soil moisture and 3-day rain probability for the user's location (Open-Meteo weather model), and median mandi prices from Agmarknet when a data.gov.in key is configured.
-* **AI Agronomist Diagnostics**: Diagnostic form that takes crop, soil type, watering schedule, symptom description and/or a photo of the affected plant, with advice in English or Hindi.
-* **Interactive Treatment Checklists**: Generates checkable organic and chemical intervention tasks that update client states dynamically.
-* **Floating AI Chat Assistant**: Floating bubble widget present on all pages for logged-in users, with conversation memory, English/Hindi replies and voice input.
-* **Dual Color Themes**: Built-in support for high-contrast light and dark themes using modern CSS variables.
+* **Farm profile (My Farm)**: farm location (district search or approximate GPS), Soil Health Card values with the ratings printed on the card, language, sensor device keys, password change, data download and account deletion.
+* **Crop records**: add, edit and remove crops with season, water need, sowing date, area and notes. Each crop belongs to its owner, and cards show crop age.
+* **Field conditions**: modelled soil moisture and a 3-day rain outlook for the saved location (Open-Meteo), and median mandi prices from Agmarknet when a data.gov.in key is configured.
+* **AI crop advisor**: describe symptoms and/or upload a leaf photo. The AI also gets the farm profile (location, current weather, soil test, crop age). Past checks are saved and can be reopened or deleted.
+* **AI chat assistant**: conversation saved per user (survives reloads), uses the farm profile, English or Hindi replies, voice input.
+* **Sensors**: real devices post readings with their own revocable key (`X-Device-Key`). The demo stream only shows when switched on and is clearly labelled.
+* **Hindi and English interface**, remembered per account; light/dark theme that follows the device setting.
+* **Accessible and mobile-first**: collapsible menu, 44 px touch targets, visible keyboard focus, skip link, labelled forms, reduced-motion support, installable on phones (web app manifest).
+* **Privacy**: plain-language privacy notice (English and Hindi), consent at sign-up, httpOnly session cookie, no tracking.
 
 ---
 
@@ -125,11 +128,11 @@ npm run dev
 
 #### 5. Run the Tests
 ```bash
-npm test -w backend
+npm test
 ```
-30 automated tests (Node's built-in test runner, no extra dependencies) cover authentication,
-session revocation, CSRF protection, per-user data isolation, input validation, AI route guards,
-the weather integration, the evaluation scoring helpers and the production safety checks.
+* **Backend** (`npm test -w backend`, Node's built-in test runner): 49 tests covering authentication, session revocation, CSRF, per-user data isolation, validation, profile, Soil Health Card, device keys, chat and diagnosis history, data export, account deletion, the farm context given to the AI, Gemini retries, weather mapping and production safety checks.
+* **Frontend** (`npm test -w frontend`, Vitest + Testing Library): 13 tests, including a check that every English string has a Hindi translation with the same placeholders.
+* **CI**: `.github/workflows/ci.yml` runs both suites, the production build and `npm audit` on every push and pull request.
 
 ---
 
@@ -187,14 +190,30 @@ must include the header `X-Requested-With: CropMind` (CSRF protection).
   * *Request Body*: `{"time": "12:00:00", "type": "warning", "text": "Low moisture."}`
 
 ### 4. AI Agronomist (Requires Session, rate limited per user)
-* **`POST /api/ai/chat`**: Asks Gemini a question (max 1000 chars), with up to 10 earlier messages for context. 30 requests / 15 min.
-  * *Request Body*: `{"message": "And for wheat?", "history": [{"role": "user", "text": "When to sow rice?"}, {"role": "assistant", "text": "..."}], "language": "hi"}`
+* **`POST /api/ai/chat`**: asks Gemini a question (max 1000 chars). The server adds the last 10 saved messages and the farm profile as context, and saves both turns. 30 requests / 15 min.
+  * *Request Body*: `{"message": "How many irrigations does my wheat need?", "language": "hi"}`
 * **`POST /api/ai/diagnose`**: Returns a structured diagnosis (validated JSON) from a symptom description, a photo, or both. 10 requests / 15 min. The `confidence` field is the model's own rough estimate, not a measured accuracy.
   * *Request Body*: `{"cropName": "Tomato", "symptoms": "Yellow leaves", "soilType": "Loamy", "wateringFrequency": "Daily", "language": "en", "image": {"mimeType": "image/jpeg", "data": "<base64, max 4 MB>"}}`
 
 ### 5. Field Insights (Requires Session)
-* **`GET /api/insights/weather?lat=..&lon=..`**: Modelled soil moisture (3–9 cm), temperature, humidity and 3-day rain probability from Open-Meteo. Coordinates are rounded to about 1 km.
-* **`GET /api/insights/mandi?commodity=Wheat&state=Uttarakhand`**: Median modal price across reporting markets from Agmarknet (data.gov.in). Needs `DATA_GOV_API_KEY`; returns `503` with `configured: false` otherwise.
+* **`GET /api/insights/weather?lat=..&lon=..`**: modelled soil moisture (3–9 cm), temperature, humidity and 3-day rain probability from Open-Meteo. Coordinates are rounded to about 1 km.
+* **`GET /api/insights/places?q=Haridwar&lang=en`**: Indian district/town search (Open-Meteo geocoding, English or Hindi names).
+* **`GET /api/insights/mandi?commodity=Wheat&state=Uttarakhand`**: median modal price across reporting markets from Agmarknet (data.gov.in). Needs `DATA_GOV_API_KEY`; returns `503` with `configured: false` otherwise.
+
+### 6. Profile & Account (Requires Session)
+* **`GET /api/profile`** / **`PUT /api/profile`**: name, language (`en`/`hi`), location `{name, lat, lon}` (null clears it).
+* **`PUT /api/profile/soil-test`** / **`DELETE /api/profile/soil-test`**: Soil Health Card values (N, P, K in kg/ha, pH, organic carbon, test date) and the ratings printed on the card.
+* **`POST /api/profile/password`**: change password (or set one for Google accounts). Signs out other devices.
+* **`GET /api/profile/export`**: all stored data as JSON.
+* **`DELETE /api/profile`**: delete the account and everything it owns. Body `{confirmation}` is the password (or the email for Google accounts).
+
+### 7. Sensor Devices (Requires Session)
+* **`GET /api/devices`**, **`POST /api/devices`** `{name}` returns the key once, **`DELETE /api/devices/:id`** revokes it.
+* Devices send `POST /api/telemetry` with header `X-Device-Key: cmd_...`. A device key can only post readings.
+
+### 8. History (Requires Session)
+* **`GET /api/ai/chat/history`**, **`DELETE /api/ai/chat/history`**
+* **`GET /api/ai/diagnoses`**, **`DELETE /api/ai/diagnoses/:id`**
 
 ---
 
@@ -216,8 +235,8 @@ CropMind/
 ├── backend/                  # Node.js Server & Database Configuration
 │   ├── middleware/           # Session auth & CSRF, Zod validation, rate limiting
 │   ├── models/               # MongoDB Mongoose Schemas (User, Crop, TelemetryLog)
-│   ├── routes/               # API routers (auth, ai, crops, telemetry, insights)
-│   ├── services/             # Gemini client, diagnosis logic, session handling
+│   ├── routes/               # API routers (auth, ai, crops, telemetry, insights, profile, devices)
+│   ├── services/             # Gemini client, diagnosis, farm context for the AI, sessions, weather, users
 │   ├── eval/                 # Offline AI evaluation harness
 │   ├── tests/                # Automated API and unit tests
 │   ├── public/               # Static API docs page (/docs)
@@ -231,9 +250,11 @@ CropMind/
 │   ├── public/               # Favicon & assets
 │   ├── src/
 │   │   ├── assets/           # Dashboard hero visuals
-│   │   ├── components/       # UI elements (FieldConditions, NPKGauge, Chat, SensorLogs)
+│   │   ├── components/       # UI elements (FieldConditions, SoilCard, CropCard, Chat, SensorLogs)
 │   │   ├── context/          # Auth context (logged-in user from /api/auth/me)
-│   │   ├── pages/            # View pages (Home, Dashboard, Telemetry, Advisor, About, Login)
+│   │   ├── i18n/             # English/Hindi strings and language context
+│   │   ├── pages/            # Home, Dashboard, Advisor, Sensors, My Farm, About, Privacy, Login
+│   │   ├── test/             # Vitest + Testing Library tests
 │   │   ├── services/         # Axios API client
 │   │   ├── App.jsx           # Routing & dark-theme triggers
 │   │   └── styles.css        # Core custom layout responsive styles
@@ -249,13 +270,15 @@ CropMind/
 
 ## Known Limitations
 
-* **Render Server Spin-Down (Cold Start)**: The backend is deployed on a free Render tier. As a result, the server spins down after **15 minutes of inactivity**. The first API call sent to the app after a period of dormancy will trigger a cold-start, requiring **30 to 60 seconds** to boot.
-* **MongoDB M0 Storage Ceiling**: The database uses MongoDB Atlas's free M0 cluster, which has a memory capacity limit of **512 MB**, suitable only for developer testing and demonstration.
-* **Field data is modelled, not measured**: Soil moisture and rain come from Open-Meteo's weather model for the user's approximate location, not from sensors in the field. The sensor log stream on the dashboard is still simulated.
-* **AI accuracy not yet measured**: The evaluation harness exists, but no labelled case set has been run yet. Treat diagnoses as suggestions and consult a local agriculture expert (KVK) for decisions.
-* **Interface language**: AI answers can be in Hindi, but the interface text is still English only.
-* **Voice input** uses the browser's speech recognition, available in Chrome, Edge and Android browsers but not Firefox.
-* **Sandbox OAuth**: Without Google keys, a password-less sandbox sign-in is available only in local development with the in-memory database.
+* **Render Server Spin-Down (Cold Start)**: the free Render backend sleeps after 15 minutes idle; the first request can take 30–60 seconds. The app shows a "waking up" notice meanwhile.
+* **MongoDB M0 free tier**: 512 MB storage, and the cluster pauses after long inactivity (resume it in Atlas).
+* **Field data is modelled, not measured**: soil moisture and rain come from Open-Meteo's model for the saved area. Real field readings need your own sensor devices.
+* **AI accuracy not yet measured**: the evaluation harness exists but needs a labelled case set from published sources. Advice should be confirmed with a KVK or agriculture officer.
+* **No password reset by email / email verification**: these need an email-sending service (e.g. SMTP or Resend), which is not configured. Users can change their password while logged in.
+* **Hindi translation** was written for this project and should be reviewed by a native speaker who works with farmers.
+* **Voice input** uses the browser's speech recognition (Chrome, Edge, Android), not Firefox.
+* **Sandbox OAuth**: without Google keys, a password-less sandbox sign-in exists only in local development with the in-memory database.
+* **No error monitoring service** (e.g. Sentry) is connected; check Render logs and `/api/health`.
 
 ---
 

@@ -9,21 +9,21 @@ after(async () => { await server.close(); });
 
 test("register validates input and rejects duplicates (case-insensitive)", async () => {
   const c = new Client(server.baseUrl);
-  let r = await c.post("/api/auth/register", { email: "not-an-email", password: "longenough1" });
+  let r = await c.post("/api/auth/register", { email: "not-an-email", password: "longenough1", acceptPrivacy: true });
   assert.equal(r.status, 400);
-  r = await c.post("/api/auth/register", { email: "short@example.com", password: "short7!" });
+  r = await c.post("/api/auth/register", { email: "short@example.com", password: "short7!", acceptPrivacy: true });
   assert.equal(r.status, 400);
   assert.match(r.data.message, /at least 8/);
-  r = await c.post("/api/auth/register", { email: "Dup@Example.com", password: "longenough1" });
+  r = await c.post("/api/auth/register", { email: "Dup@Example.com", password: "longenough1", acceptPrivacy: true });
   assert.equal(r.status, 201);
   assert.equal(r.data.user.email, "dup@example.com");
-  r = await c.post("/api/auth/register", { email: "dup@example.com", password: "longenough1" });
+  r = await c.post("/api/auth/register", { email: "dup@example.com", password: "longenough1", acceptPrivacy: true });
   assert.equal(r.status, 400);
 });
 
 test("login sets an httpOnly session cookie and never returns the token in the body", async () => {
   const c = new Client(server.baseUrl);
-  await c.post("/api/auth/register", { email: "cookie@example.com", password: "longenough1" });
+  await c.post("/api/auth/register", { email: "cookie@example.com", password: "longenough1", acceptPrivacy: true });
   const r = await c.post("/api/auth/login", { email: "COOKIE@example.com", password: "longenough1" });
   assert.equal(r.status, 200);
   assert.equal(r.data.token, undefined);

@@ -392,11 +392,7 @@
         </div>
         <div class="example-header">Request Payload (JSON)</div>
         <pre><code>{
-  "message": "And for wheat?",
-  "history": [
-    { "role": "user", "text": "When should I irrigate my Rabi rice?" },
-    { "role": "assistant", "text": "..." }
-  ],
+  "message": "How many irrigations does my wheat need?",
   "language": "hi"
 }</code></pre>
       </div>
@@ -454,6 +450,225 @@
       </div>
     </div>
 
+
+    <!-- PLACES -->
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/insights/places?q=&amp;lang=</span>
+        <span class="desc">District / town search (Open-Meteo geocoding)</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="section-title">Profile &amp; Account</div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/profile</span>
+        <span class="desc">Name, language, location, soil test</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method put">PUT</span>
+        <span class="path">/api/profile</span>
+        <span class="desc">Update name, language or location (null clears)</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method put">PUT</span>
+        <span class="path">/api/profile/soil-test</span>
+        <span class="desc">Save Soil Health Card values and ratings</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method delete">DELETE</span>
+        <span class="path">/api/profile/soil-test</span>
+        <span class="desc">Remove the soil test</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method post">POST</span>
+        <span class="path">/api/profile/password</span>
+        <span class="desc">Change (or set) password; signs out other devices</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/profile/export</span>
+        <span class="desc">Download all stored data as JSON</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method delete">DELETE</span>
+        <span class="path">/api/profile</span>
+        <span class="desc">Delete account and all data (body: confirmation)</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEVICES -->
+    <div class="section-title">Sensor Devices</div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/devices</span>
+        <span class="desc">List registered devices</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method post">POST</span>
+        <span class="path">/api/devices</span>
+        <span class="desc">Create a device; returns its key once</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method delete">DELETE</span>
+        <span class="path">/api/devices/:id</span>
+        <span class="desc">Revoke a device key</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method post">POST</span>
+        <span class="path">/api/telemetry</span>
+        <span class="desc">Device posts a reading</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">X-Device-Key header</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="section-title">History</div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/ai/chat/history</span>
+        <span class="desc">Saved chat messages (oldest first)</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method delete">DELETE</span>
+        <span class="path">/api/ai/chat/history</span>
+        <span class="desc">Clear the conversation</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method get">GET</span>
+        <span class="path">/api/ai/diagnoses</span>
+        <span class="desc">Recent saved diagnoses</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="endpoint-card">
+      <div class="endpoint-header">
+        <span class="method delete">DELETE</span>
+        <span class="path">/api/ai/diagnoses/:id</span>
+        <span class="desc">Delete a saved diagnosis</span>
+      </div>
+      <div class="endpoint-body">
+        <div class="meta-list">
+          <div class="meta-item"><span class="meta-label">Authentication</span><span class="meta-value"><span class="auth-badge">Session cookie or Bearer token</span></span></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="footer">

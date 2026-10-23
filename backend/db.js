@@ -8,6 +8,8 @@ let isMockDB = false;
 let mockCrops = [];
 let mockTelemetry = [];
 let mockUsers = [];
+// Other owner-scoped collections (diagnoses, chat messages, devices) for in-memory mode.
+const mockCollections = new Map();
 
 const connectDB = async () => {
   const mongoURI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/cropmind";
@@ -42,5 +44,10 @@ module.exports = {
   getMockTelemetry: () => mockTelemetry,
   setMockTelemetry: (val) => { mockTelemetry = val; },
   getMockUsers: () => mockUsers,
-  setMockUsers: (val) => { mockUsers = val; }
+  setMockUsers: (val) => { mockUsers = val; },
+  getMockCollection: (name) => {
+    if (!mockCollections.has(name)) mockCollections.set(name, []);
+    return mockCollections.get(name);
+  },
+  setMockCollection: (name, val) => { mockCollections.set(name, val); }
 };

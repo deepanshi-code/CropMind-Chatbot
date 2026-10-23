@@ -2,34 +2,12 @@ const express = require("express");
 const { z } = require("zod");
 const { requireAuth } = require("../middleware/auth");
 const { makeLimiter } = require("../middleware/rateLimit");
+const { getWeather, searchPlaces, fetchJson, cached } = require("../services/weather");
 
 const router = express.Router();
 
 router.use(requireAuth);
 router.use(makeLimiter("insights", { windowMs: 15 * 60 * 1000, max: 60, key: "user", message: "Too many insight requests, please try again later." }));
-
-// Tiny TTL cache so repeated dashboard loads don't hammer the free upstream APIs.
-const cache = new Map();
-const cached = async (key, ttlMs, load) => {
-  const hit = cache.get(key);
-  if (hit && hit.expires > Date.now()) return hit.value;
-  const value = await load();
-  cache.set(key, { value, expires: Date.now() + ttlMs });
-  if (cache.size > 500) cache.delete(cache.keys().next().value);
-  return value;
-};
-
-const fetchJson = async (url, timeoutMs = 10000) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(url, { signal: controller.signal });
-    if (!response.ok) throw new Error(`Upstream responded ${response.status}`);
-    return await response.json();
-  } finally {
-    clearTimeout(timeoutId);
-  }
-};
 
 const coordsSchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
@@ -37,43 +15,35 @@ const coordsSchema = z.object({
 });
 
 // GET /api/insights/weather?lat=..&lon=..
-// Soil moisture here is Open-Meteo's model estimate for the 3-9 cm layer, not an in-field sensor reading.
 router.get("/weather", async (req, res) => {
   const parsed = coordsSchema.safeParse(req.query);
   if (!parsed.success) {
     return res.status(400).json({ message: "Valid lat and lon query parameters are required." });
   }
-  // ~1 km rounding: better cache hits, and we don't need (or store) the user's exact location.
-  const lat = parsed.data.lat.toFixed(2);
-  const lon = parsed.data.lon.toFixed(2);
-
   try {
-    const data = await cached(`weather:${lat},${lon}`, 30 * 60 * 1000, () => fetchJson(
-      "https://api.open-meteo.com/v1/forecast" +
-      `?latitude=${lat}&longitude=${lon}` +
-      "&current=temperature_2m,relative_humidity_2m,soil_moisture_3_to_9cm" +
-      "&daily=precipitation_probability_max,precipitation_sum" +
-      "&forecast_days=3&timezone=auto"
-    ));
-
-    const soil = data.current?.soil_moisture_3_to_9cm;
-    res.status(200).json({
-      source: "Open-Meteo (modelled data)",
-      location: { lat: Number(lat), lon: Number(lon) },
-      time: data.current?.time,
-      temperatureC: data.current?.temperature_2m ?? null,
-      humidityPct: data.current?.relative_humidity_2m ?? null,
-      // m³/m³ -> volumetric percent
-      soilMoisturePct: typeof soil === "number" ? Math.round(soil * 1000) / 10 : null,
-      rain: (data.daily?.time || []).map((date, i) => ({
-        date,
-        probabilityPct: data.daily.precipitation_probability_max?.[i] ?? null,
-        amountMm: data.daily.precipitation_sum?.[i] ?? null,
-      })),
-    });
+    res.status(200).json(await getWeather(parsed.data.lat, parsed.data.lon));
   } catch (error) {
     console.error("Weather insight error:", error.message);
     res.status(502).json({ message: "Weather service is unavailable right now." });
+  }
+});
+
+const placeSchema = z.object({
+  q: z.string().trim().min(2, { message: "Type at least 2 letters." }).max(60),
+  lang: z.enum(["en", "hi"]).default("en"),
+});
+
+// GET /api/insights/places?q=Haridwar - district / town search for the farm location
+router.get("/places", async (req, res) => {
+  const parsed = placeSchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ message: parsed.error.issues[0].message });
+  }
+  try {
+    res.status(200).json(await searchPlaces(parsed.data.q, parsed.data.lang));
+  } catch (error) {
+    console.error("Place search error:", error.message);
+    res.status(502).json({ message: "Place search is unavailable right now." });
   }
 });
 

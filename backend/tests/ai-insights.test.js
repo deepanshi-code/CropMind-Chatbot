@@ -22,18 +22,53 @@ test("AI routes require a session", async () => {
   assert.equal((await anon.post("/api/ai/diagnose", { cropName: "Rice", symptoms: "spots" })).status, 401);
 });
 
-test("chat validates message, history and language", async () => {
+test("chat validates message and language", async () => {
   assert.equal((await user.post("/api/ai/chat", { message: "x".repeat(1001) })).status, 400);
-  const tooLong = Array.from({ length: 11 }, (_, i) => ({ role: i % 2 ? "assistant" : "user", text: "q" }));
-  assert.equal((await user.post("/api/ai/chat", { message: "hi", history: tooLong })).status, 400);
   assert.equal((await user.post("/api/ai/chat", { message: "hi", language: "fr" })).status, 400);
-  const ok = await user.post("/api/ai/chat", {
-    message: "and for wheat?",
-    history: [{ role: "assistant", text: "greeting" }, { role: "user", text: "when to sow rice?" }, { role: "assistant", text: "June" }],
-    language: "hi",
-  });
+  const ok = await user.post("/api/ai/chat", { message: "when to sow rice?", language: "hi" });
   assert.equal(ok.status, 200);
   assert.ok(ok.data.reply);
+});
+
+test("chat history is saved per user and can be cleared", async () => {
+  const other = await registerAndLogin(server.baseUrl, "other-chat@example.com");
+  await user.delete("/api/ai/chat/history");
+  await user.post("/api/ai/chat", { message: "first question" });
+  await user.post("/api/ai/chat", { message: "second question" });
+
+  const history = await user.get("/api/ai/chat/history");
+  assert.equal(history.status, 200);
+  assert.deepEqual(history.data.map((m) => m.role), ["user", "assistant", "user", "assistant"]);
+  assert.equal(history.data[0].text, "first question");
+  assert.equal((await other.get("/api/ai/chat/history")).data.length, 0, "not visible to other users");
+
+  assert.equal((await user.delete("/api/ai/chat/history")).status, 204);
+  assert.equal((await user.get("/api/ai/chat/history")).data.length, 0);
+});
+
+test("diagnoses are saved, listed newest first and deletable", async () => {
+  await user.post("/api/ai/diagnose", { cropName: "Rice", symptoms: "brown spots" });
+  await user.post("/api/ai/diagnose", { cropName: "Wheat", symptoms: "yellow leaves" });
+  const list = await user.get("/api/ai/diagnoses");
+  assert.equal(list.status, 200);
+  assert.equal(list.data[0].cropName, "Wheat");
+  assert.ok(list.data[0].result.diagnosis);
+  assert.equal(list.data[0].hadPhoto, false);
+
+  assert.equal((await user.delete(`/api/ai/diagnoses/${list.data[0].id}`)).status, 204);
+  assert.equal((await user.get("/api/ai/diagnoses")).data.length, list.data.length - 1);
+});
+
+test("diagnose can use a crop from the user's own catalog only", async () => {
+  const crop = await user.post("/api/crops", { name: "Mustard", season: "Rabi", water: "Low", sowingDate: "2026-10-01" });
+  let r = await user.post("/api/ai/diagnose", { cropId: crop.data.id, cropName: "ignored", symptoms: "white rust" });
+  assert.equal(r.status, 200);
+  assert.equal((await user.get("/api/ai/diagnoses")).data[0].cropName, "Mustard");
+
+  const stranger = await registerAndLogin(server.baseUrl, "stranger@example.com");
+  r = await stranger.post("/api/ai/diagnose", { cropId: crop.data.id, cropName: "Guess", symptoms: "x" });
+  assert.equal(r.status, 200);
+  assert.equal((await stranger.get("/api/ai/diagnoses")).data[0].cropName, "Guess", "another user's crop is not used");
 });
 
 test("diagnose needs symptoms or a photo, and checks the photo really is an image", async () => {

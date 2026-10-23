@@ -11,6 +11,7 @@ const { makeLimiter } = require("../middleware/rateLimit");
 const { requireAuth } = require("../middleware/auth");
 const { COOKIE_NAME, issueSession, clearSession, verifySessionToken, revokeSessions } = require("../services/session");
 const { FRONTEND_URL, hasGoogleKeys, isProduction } = require("../config");
+const { getProfile } = require("../services/users");
 
 const router = express.Router();
 
@@ -56,14 +57,19 @@ const findOrCreateOAuthUser = async (rawEmail) => {
     const users = db.getMockUsers();
     let user = users.find(u => u.email === email);
     if (!user) {
-      user = { id: "mock-oauth-" + crypto.randomUUID(), email, password: await randomPasswordHash() };
+      user = {
+        id: "mock-oauth-" + crypto.randomUUID(), email, password: await randomPasswordHash(),
+        authProvider: "google", privacyAcceptedAt: new Date(), createdAt: new Date(),
+      };
       db.setMockUsers([user, ...users]);
     }
     return user;
   }
   let user = await User.findOne({ email });
   if (!user) {
-    user = await User.create({ email, password: await randomPasswordHash() });
+    user = await User.create({
+      email, password: await randomPasswordHash(), authProvider: "google", privacyAcceptedAt: new Date(),
+    });
   }
   return user;
 };
@@ -109,7 +115,10 @@ router.post("/register", registerLimiter, validate(schemas.register), async (req
       if (users.some(u => u.email === email)) {
         return res.status(400).json({ message: "Email is already registered." });
       }
-      const newUser = { id: "mock-user-" + crypto.randomUUID(), email, password: hashedPassword };
+      const newUser = {
+        id: "mock-user-" + crypto.randomUUID(), email, password: hashedPassword,
+        authProvider: "password", privacyAcceptedAt: new Date(), createdAt: new Date(),
+      };
       db.setMockUsers([newUser, ...users]);
       return res.status(201).json({
         message: "User registered successfully (In-Memory).",
@@ -120,7 +129,7 @@ router.post("/register", registerLimiter, validate(schemas.register), async (req
     if (await User.exists({ email })) {
       return res.status(400).json({ message: "Email is already registered." });
     }
-    const user = await User.create({ email, password: hashedPassword });
+    const user = await User.create({ email, password: hashedPassword, authProvider: "password", privacyAcceptedAt: new Date() });
     res.status(201).json({
       message: "User registered successfully.",
       user: { id: user._id, email: user.email }
@@ -157,8 +166,15 @@ router.post("/login", validate(schemas.login), loginIpLimiter, loginAccountLimit
 });
 
 // GET /api/auth/me - who is logged in (the frontend cannot read the httpOnly cookie itself)
-router.get("/me", requireAuth, (req, res) => {
-  res.status(200).json({ user: req.user });
+router.get("/me", requireAuth, async (req, res, next) => {
+  try {
+    const profile = await getProfile(req.user.id);
+    if (!profile) return res.status(401).json({ message: "Access denied. Please log in." });
+    const { id, email, name, language, authProvider } = profile;
+    res.status(200).json({ user: { id, email, name, language, authProvider } });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // POST /api/auth/logout - revokes every session of this user and clears the cookie

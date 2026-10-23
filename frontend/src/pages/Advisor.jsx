@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from "react";
-import { getCrops, diagnoseCrop } from "../services/api";
+import { useSearchParams } from "react-router-dom";
+import { getCrops, diagnoseCrop, getDiagnoses, deleteDiagnosis, errorMessage } from "../services/api";
 import Toast from "../components/Toast";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const MAX_PHOTO_DIMENSION = 1280;
 const ACCEPTED_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const OTHER = "other";
+const SOIL_TYPES = [["Alluvial", "soilType.Alluvial"], ["Black Cotton", "soilType.Black"], ["Red Sandy", "soilType.Red"], ["Loamy", "soilType.Loamy"], ["Laterite", "soilType.Laterite"]];
+const WATERING = [["Daily", "watering.Daily"], ["Twice a week", "watering.Twice"], ["Once a week", "watering.Weekly"], ["Rainfed / irregular", "watering.Rainfed"]];
 
 // Downscale and re-encode as JPEG in the browser: keeps uploads small on rural mobile data,
 // and re-encoding drops EXIF metadata such as the GPS location of the farm.
@@ -22,149 +27,173 @@ const preparePhoto = (file) => new Promise((resolve, reject) => {
   };
   img.onerror = () => {
     URL.revokeObjectURL(url);
-    reject(new Error("Could not read the image."));
+    reject(new Error("unreadable"));
   };
   img.src = url;
 });
 
-export default function Advisor() {
-  const [crops, setCrops] = useState([]);
-  const [cropsLoading, setCropsLoading] = useState(false);
+function ResultView({ result, onNew }) {
+  const { t } = useLanguage();
+  const [done, setDone] = useState({});
+  const severityKey = { High: "common.high", Medium: "common.medium", Low: "common.low" }[result.severity] || "common.medium";
 
-  // Form states
-  const [selectedCrop, setSelectedCrop] = useState("");
+  return (
+    <div className="advisor-results" aria-live="polite">
+      <div className="card result-header-card">
+        <div className="result-meta-top">
+          <span className="badge-featured">{t("adv.title")}</span>
+          <button type="button" className="btn-secondary" onClick={onNew}>{t("adv.newCheck")}</button>
+        </div>
+        <h2>{result.diagnosis}</h2>
+        <div className="indicators-row">
+          <div className="indicator-pill">
+            <span className="label">{t("adv.severity")}</span>
+            <span className={`badge-severity ${(result.severity || "medium").toLowerCase()}`}>{t(severityKey)}</span>
+          </div>
+          {typeof result.confidence === "number" && result.confidence > 0 && (
+            <div className="indicator-pill">
+              <span className="label" title={t("adv.modelGuessHelp")}>{t("adv.modelGuess", { value: result.confidence })}</span>
+            </div>
+          )}
+        </div>
+        {result.usedFarmProfile && <p className="section-help">✓ {t("adv.usedProfile")}</p>}
+        <p className="advice-disclaimer" role="note">⚠ {t("adv.disclaimer")}</p>
+      </div>
+
+      {result.treatment?.length > 0 && (
+        <div className="card detail-advisor-card">
+          <h3>{t("adv.treatment")}</h3>
+          <ul className="treatment-checklist">
+            {result.treatment.map((step, idx) => (
+              <li key={idx} className={`checklist-item ${done[idx] ? "completed" : ""}`}>
+                <label>
+                  <input type="checkbox" checked={!!done[idx]} onChange={() => setDone((prev) => ({ ...prev, [idx]: !prev[idx] }))} />
+                  <span className="step-text">{step}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="grid-2-layout grid-2">
+        {result.prevention?.length > 0 && (
+          <div className="card detail-advisor-card">
+            <h3>{t("adv.prevention")}</h3>
+            <ul className="info-bullets">
+              {result.prevention.map((bullet, idx) => <li key={idx}><span className="bullet-dot" aria-hidden="true"></span><span>{bullet}</span></li>)}
+            </ul>
+          </div>
+        )}
+        {result.fertilizerIrrigationGuidance && (
+          <div className="card detail-advisor-card">
+            <h3>{t("adv.guidance")}</h3>
+            <p className="guidance-paragraph">{result.fertilizerIrrigationGuidance}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Advisor() {
+  const { t, language: uiLanguage } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const [crops, setCrops] = useState([]);
+  const [cropChoice, setCropChoice] = useState("");
   const [customCropName, setCustomCropName] = useState("");
   const [symptoms, setSymptoms] = useState("");
   const [soilType, setSoilType] = useState("Loamy");
-  const [wateringFrequency, setWateringFrequency] = useState("Medium");
-  const [language, setLanguage] = useState("en");
+  const [wateringFrequency, setWateringFrequency] = useState("Twice a week");
+  const [language, setLanguage] = useState(uiLanguage);
   const [photo, setPhoto] = useState(null);
 
-  // Status & Response states
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [toast, setToast] = useState(null);
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
 
-  // Checked state for treatment plan items
-  const [checkedTreatments, setCheckedTreatments] = useState({});
-
-  useEffect(() => {
-    fetchCropsList();
-  }, []);
-
-  const fetchCropsList = async () => {
-    try {
-      setCropsLoading(true);
-      const data = await getCrops();
-      setCrops(data);
-      if (data.length > 0) {
-        setSelectedCrop(data[0].name);
-      } else {
-        setSelectedCrop("other");
-      }
-    } catch (err) {
-      console.error("Failed to load registered crops:", err);
-      setSelectedCrop("other");
-    } finally {
-      setCropsLoading(false);
-    }
+  const showError = (title, message) => {
+    setToast({ type: "error", title, message });
+    setTimeout(() => setToast(null), 6000);
   };
 
-  // Rotate loading text steps to simulate advanced soil diagnostics
   useEffect(() => {
-    let interval;
-    if (isLoading) {
-      setLoadingStep(0);
-      interval = setInterval(() => {
-        setLoadingStep((prev) => (prev + 1) % 4);
-      }, 3000);
-    }
+    const wanted = searchParams.get("crop");
+    getCrops()
+      .then((data) => {
+        setCrops(data);
+        setCropChoice(data.some((c) => c.id === wanted) ? wanted : data[0]?.id || OTHER);
+      })
+      .catch(() => setCropChoice(OTHER));
+    getDiagnoses().then(setHistory).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { setLanguage(uiLanguage); }, [uiLanguage]);
+
+  useEffect(() => {
+    if (!isLoading) return undefined;
+    setLoadingStep(0);
+    const interval = setInterval(() => setLoadingStep((prev) => Math.min(prev + 1, 2)), 3000);
     return () => clearInterval(interval);
   }, [isLoading]);
-
-  const loadingMessages = [
-    "🌾 Sending crop details to the AI model...",
-    "🔬 Analysing described symptoms" + (photo ? " and photo..." : "..."),
-    "🧪 Drafting treatment and prevention steps...",
-    "💡 Preparing fertilizer and irrigation guidance..."
-  ];
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
     if (!ACCEPTED_PHOTO_TYPES.includes(file.type)) {
-      triggerError("Unsupported Photo", "Please choose a JPEG, PNG or WebP image.");
+      showError(t("adv.photo"), t("adv.photoType"));
       return;
     }
     try {
       setPhoto(await preparePhoto(file));
-    } catch (err) {
-      triggerError("Photo Error", err.message);
+    } catch {
+      showError(t("adv.photo"), t("adv.photoError"));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalCropName = selectedCrop === "other" ? customCropName : selectedCrop;
-
-    if (!finalCropName || !finalCropName.trim()) {
-      triggerError("Validation Error", "Crop name is required. Please select or enter a crop name.");
-      return;
-    }
-    if (!symptoms.trim() && !photo) {
-      triggerError("Validation Error", "Describe the observed symptoms or attach a photo of the affected plant.");
-      return;
-    }
+    const fromCatalog = crops.find((c) => c.id === cropChoice);
+    const cropName = fromCatalog ? fromCatalog.name : customCropName.trim();
+    if (!cropName) return showError(t("adv.formTitle"), t("adv.needCrop"));
+    if (!symptoms.trim() && !photo) return showError(t("adv.formTitle"), t("adv.needInput"));
 
     setIsLoading(true);
-    setToast(null);
     setResult(null);
-    setCheckedTreatments({});
-
     try {
       const data = await diagnoseCrop({
-        cropName: finalCropName.trim(),
+        ...(fromCatalog ? { cropId: fromCatalog.id } : {}),
+        cropName,
         symptoms: symptoms.trim(),
         soilType,
         wateringFrequency,
         language,
-        ...(photo ? { image: { mimeType: photo.mimeType, data: photo.data } } : {})
+        ...(photo ? { image: { mimeType: photo.mimeType, data: photo.data } } : {}),
       });
       setResult(data);
+      getDiagnoses().then(setHistory).catch(() => {});
     } catch (err) {
-      console.error("AI diagnostics error:", err);
-      const errMsg = err.response?.data?.message || "Failed to analyze symptoms. Make sure the backend service is running.";
-      triggerError("AI Advisor Error", errMsg);
+      showError(t("adv.title"), errorMessage(err, t("common.error")));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const triggerError = (title, message) => {
-    setToast({ type: "error", title, message });
-    setTimeout(() => {
-      setToast(null);
-    }, 6000);
-  };
-
-  const handleToggleTreatment = (index) => {
-    setCheckedTreatments((prev) => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
-  };
-
-  const startNewDiagnosis = () => {
+  const startNew = () => {
     setResult(null);
     setSymptoms("");
-    setCustomCropName("");
     setPhoto(null);
-    if (crops.length > 0) {
-      setSelectedCrop(crops[0].name);
-    } else {
-      setSelectedCrop("other");
+  };
+
+  const removeHistory = async (id) => {
+    try {
+      await deleteDiagnosis(id);
+      setHistory((prev) => prev.filter((h) => h.id !== id));
+    } catch (err) {
+      showError(t("adv.history"), errorMessage(err, t("common.error")));
     }
   };
 
@@ -172,262 +201,117 @@ export default function Advisor() {
     <div className="page advisor-page">
       <Toast toast={toast} onClose={() => setToast(null)} />
 
-      <div className="dashboard-header animate-fade-in">
-        <h1>AI Agronomist & Diagnostic Advisor</h1>
-        <p>Analyze crop health, generate localized treatment plans, and inspect soil irrigation guidelines.</p>
+      <div className="dashboard-header">
+        <h1>{t("adv.title")}</h1>
+        <p>{t("adv.subtitle")}</p>
       </div>
 
-      <div className="dashboard-content-layout" style={{ marginTop: "24px" }}>
-        {/* Left Column: Diagnostics Form */}
-        <section className="dashboard-sidebar animate-fade-in-up delay-1">
+      <div className="dashboard-content-layout">
+        <section className="dashboard-sidebar" aria-labelledby="adv-form-title">
           <div className="card form-card">
-            <h2>Start Crop Diagnosis</h2>
+            <h2 id="adv-form-title">{t("adv.formTitle")}</h2>
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="select-crop">Select Crop to Inspect</label>
-                {cropsLoading ? (
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Loading crop catalog...</div>
-                ) : (
-                  <select
-                    id="select-crop"
-                    value={selectedCrop}
-                    onChange={(e) => setSelectedCrop(e.target.value)}
-                  >
-                    {crops.map((c) => (
-                      <option key={c.id} value={c.name}>
-                        {c.name} ({c.season})
-                      </option>
-                    ))}
-                    <option value="other">+ Non-registered Crop</option>
-                  </select>
-                )}
+                <label htmlFor="select-crop">{t("adv.crop")}</label>
+                <select id="select-crop" value={cropChoice} onChange={(e) => setCropChoice(e.target.value)}>
+                  {crops.map((c) => <option key={c.id} value={c.id}>{c.name} – {t(`season.${c.season}`)}</option>)}
+                  <option value={OTHER}>{t("adv.otherCrop")}</option>
+                </select>
               </div>
 
-              {selectedCrop === "other" && (
-                <div className="form-group animate-fade-in">
-                  <label htmlFor="custom-crop">Enter Crop Name</label>
-                  <input
-                    id="custom-crop"
-                    type="text"
-                    placeholder="e.g. Cotton, Garlic, Mustard"
-                    value={customCropName}
-                    onChange={(e) => setCustomCropName(e.target.value)}
-                    required
-                  />
+              {cropChoice === OTHER && (
+                <div className="form-group">
+                  <label htmlFor="custom-crop">{t("adv.cropName")}</label>
+                  <input id="custom-crop" value={customCropName} maxLength={60} required placeholder={t("dash.cropNamePh")} onChange={(e) => setCustomCropName(e.target.value)} />
                 </div>
               )}
 
-              <div className="form-group">
-                <label htmlFor="soil-type">Soil Type</label>
-                <select
-                  id="soil-type"
-                  value={soilType}
-                  onChange={(e) => setSoilType(e.target.value)}
-                >
-                  <option value="Alluvial">Alluvial</option>
-                  <option value="Black Cotton">Black / Clayey Cotton Soil</option>
-                  <option value="Red Sandy">Red / Sandy</option>
-                  <option value="Loamy">Loamy</option>
-                  <option value="Laterite">Laterite</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="watering-frequency">Watering / Irrigation</label>
-                <select
-                  id="watering-frequency"
-                  value={wateringFrequency}
-                  onChange={(e) => setWateringFrequency(e.target.value)}
-                >
-                  <option value="Daily">Daily</option>
-                  <option value="Twice a week">Twice a week</option>
-                  <option value="Once a week">Once a week</option>
-                  <option value="Sparse / Irregular">Sparse / Rainfed</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="symptoms">Observed Symptoms / Farm Notes</label>
-                <textarea
-                  id="symptoms"
-                  rows="4"
-                  placeholder="e.g. Lower leaves turning yellow with brown rings, plant growth is stunted and flowers are dropping."
-                  value={symptoms}
-                  onChange={(e) => setSymptoms(e.target.value)}
-                  maxLength={1500}
-                ></textarea>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="crop-photo">Photo of Affected Plant (optional)</label>
-                <div className="photo-upload">
-                  <input
-                    id="crop-photo"
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handlePhotoChange}
-                  />
-                  {photo && (
-                    <>
-                      <img src={photo.preview} alt="Selected crop" className="photo-preview" />
-                      <button type="button" className="photo-remove-btn" onClick={() => setPhoto(null)}>
-                        Remove
-                      </button>
-                    </>
-                  )}
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="soil-type">{t("adv.soilType")}</label>
+                  <select id="soil-type" value={soilType} onChange={(e) => setSoilType(e.target.value)}>
+                    {SOIL_TYPES.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="watering-frequency">{t("adv.watering")}</label>
+                  <select id="watering-frequency" value={wateringFrequency} onChange={(e) => setWateringFrequency(e.target.value)}>
+                    {WATERING.map(([value, key]) => <option key={value} value={value}>{t(key)}</option>)}
+                  </select>
                 </div>
               </div>
 
               <div className="form-group">
-                <label htmlFor="advice-language">Advice Language</label>
+                <label htmlFor="symptoms">{t("adv.symptoms")}</label>
+                <textarea id="symptoms" rows="4" maxLength={1500} placeholder={t("adv.symptomsPh")} value={symptoms} onChange={(e) => setSymptoms(e.target.value)}></textarea>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="crop-photo">{t("adv.photo")} <span className="optional">({t("common.optional")})</span></label>
+                <div className="photo-upload">
+                  <input id="crop-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} aria-describedby="photo-help" />
+                  {photo && (
+                    <>
+                      <img src={photo.preview} alt="" className="photo-preview" />
+                      <button type="button" className="photo-remove-btn" onClick={() => setPhoto(null)}>{t("adv.removePhoto")}</button>
+                    </>
+                  )}
+                </div>
+                <p id="photo-help" className="section-help">{t("adv.photoHelp")}</p>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="advice-language">{t("adv.language")}</label>
                 <select id="advice-language" value={language} onChange={(e) => setLanguage(e.target.value)}>
                   <option value="en">English</option>
-                  <option value="hi">हिन्दी (Hindi)</option>
+                  <option value="hi">हिन्दी</option>
                 </select>
               </div>
 
               <button type="submit" className="btn-primary btn-block" disabled={isLoading}>
-                {isLoading ? "Running Diagnostics..." : "Analyze Health & Remedy"}
+                {isLoading ? t("adv.submitting") : t("adv.submit")}
               </button>
             </form>
           </div>
         </section>
 
-        {/* Right Column: Loading or Results */}
-        <section className="dashboard-main animate-fade-in-up delay-2">
+        <section className="dashboard-main" aria-label={t("adv.title")}>
           {isLoading && (
-            <div className="card loading-advisor-card">
-              <div className="spinner"></div>
-              <h3>AI Diagnostics Running</h3>
-              <p className="loading-advisor-text">{loadingMessages[loadingStep]}</p>
-              <div className="loading-bar-track">
-                <div 
-                  className="loading-bar-fill" 
-                  style={{ width: `${(loadingStep + 1) * 25}%` }}
-                ></div>
-              </div>
+            <div className="card loading-advisor-card" role="status">
+              <div className="spinner" aria-hidden="true"></div>
+              <p className="loading-advisor-text">{t(`adv.loading${loadingStep + 1}`)}</p>
             </div>
           )}
 
           {!isLoading && !result && (
             <div className="card empty-advisor-card">
-              <div className="empty-icon-container">
-                <svg viewBox="0 0 24 24" width="48" height="48">
-                  <path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12c0-2.4 1.35-4.7 3.5-6"></path>
-                  <path d="M12 6v6l4 2"></path>
-                </svg>
-              </div>
-              <h3>Advisor Core Idle</h3>
-              <p>Fill out the diagnostic panel on the left to request a crop analysis. The AI agronomist will diagnose likely diseases and outline a detailed organic/chemical treatment checklist.</p>
+              <h3>{t("adv.idleTitle")}</h3>
+              <p>{t("adv.idleText")}</p>
             </div>
           )}
 
-          {!isLoading && result && (
-            <div className="advisor-results animate-fade-in">
-              {/* Diagnostic Overview */}
-              <div className="card result-header-card">
-                <div className="result-meta-top">
-                  <span className="badge-featured">Diagnosis Report</span>
-                  <button className="btn-secondary btn-sm" onClick={startNewDiagnosis} style={{ padding: "6px 14px", fontSize: "12px", borderRadius: "8px" }}>
-                    Start New Analysis
-                  </button>
-                </div>
-                
-                <h2>{result.diagnosis}</h2>
-                
-                <div className="indicators-row">
-                  <div className="indicator-pill">
-                    <span className="label">Severity</span>
-                    <span className={`badge-severity ${result.severity?.toLowerCase() || "medium"}`}>
-                      {result.severity}
-                    </span>
-                  </div>
-                  <div className="indicator-pill">
-                    <span className="label" title="The model&apos;s own rough estimate, not a measured accuracy">Model self-estimate</span>
-                    <div className="confidence-meter-container">
-                      <div className="confidence-track">
-                        <div 
-                          className="confidence-fill" 
-                          style={{ width: `${result.confidence || 50}%` }}
-                        ></div>
-                      </div>
-                      <span className="confidence-value">{result.confidence || 50}%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {!isLoading && result && <ResultView result={result} onNew={startNew} />}
 
-              {/* Treatment Checklist Card */}
-              <div className="card detail-advisor-card" style={{ marginTop: "24px" }}>
-                <div className="card-heading-block">
-                  <div className="icon-wrap green">
-                    <svg viewBox="0 0 24 24" width="20" height="20">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </div>
-                  <h3>Suggested Treatment Plan</h3>
-                </div>
-                <p className="card-helper-text">Mark tasks as checked as you complete them on your farm.</p>
-                
-                <ul className="treatment-checklist">
-                  {result.treatment && result.treatment.map((step, idx) => (
-                    <li 
-                      key={idx} 
-                      className={`checklist-item ${checkedTreatments[idx] ? "completed" : ""}`}
-                      onClick={() => handleToggleTreatment(idx)}
-                    >
-                      <div className="check-box">
-                        {checkedTreatments[idx] && (
-                          <svg viewBox="0 0 24 24" width="12" height="12">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        )}
-                      </div>
-                      <span className="step-text">{step}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Preventive Measures & Soil Guidance Grid */}
-              <div className="grid-2-layout grid-2" style={{ marginTop: "24px" }}>
-                {/* Preventive Card */}
-                <div className="card detail-advisor-card">
-                  <div className="card-heading-block">
-                    <div className="icon-wrap cyan">
-                      <svg viewBox="0 0 24 24" width="20" height="20">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                      </svg>
-                    </div>
-                    <h3>Preventive Measures</h3>
-                  </div>
-                  <ul className="info-bullets">
-                    {result.prevention && result.prevention.map((bullet, idx) => (
-                      <li key={idx}>
-                        <span className="bullet-dot"></span>
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Soil & Irrigation Guidance */}
-                <div className="card detail-advisor-card">
-                  <div className="card-heading-block">
-                    <div className="icon-wrap yellow">
-                      <svg viewBox="0 0 24 24" width="20" height="20">
-                        <path d="M12 22a7 7 0 0 0 7-7c0-4.3-7-13-7-13S5 10.7 5 15a7 7 0 0 0 7 7z"></path>
-                      </svg>
-                    </div>
-                    <h3>NPK & Water Guidance</h3>
-                  </div>
-                  <p className="guidance-paragraph">
-                    {result.fertilizerIrrigationGuidance}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="card history-card">
+            <h2>{t("adv.history")}</h2>
+            {history.length === 0 ? (
+              <p className="section-help">{t("adv.historyEmpty")}</p>
+            ) : (
+              <ul className="history-list">
+                {history.map((h) => (
+                  <li key={h.id}>
+                    <button type="button" className="history-open" onClick={() => setResult({ ...h.result, usedFarmProfile: false })}>
+                      <strong>{h.cropName}</strong>: {h.result?.diagnosis}
+                      <span className="muted"> · {new Date(h.createdAt).toLocaleDateString()}{h.hadPhoto ? ` · ${t("adv.withPhoto")}` : ""}</span>
+                    </button>
+                    <button type="button" className="link-danger" onClick={() => removeHistory(h.id)} aria-label={t("adv.deleteCheck")}>
+                      {t("common.delete")}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
       </div>
     </div>

@@ -27,8 +27,9 @@ const requireAuth = async (req, res, next) => {
 // requests stops cross-site request forgery against the session cookie.
 const requireCsrfHeader = (req, res, next) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
-  // Bearer-token clients don't use cookies, so they are not exposed to CSRF.
-  if (req.headers.authorization?.startsWith("Bearer ")) return next();
+  // Bearer-token and device-key clients don't use cookies, so they are not exposed to CSRF
+  // (and a custom header like these cannot be attached to a cross-site request anyway).
+  if (req.headers.authorization?.startsWith("Bearer ") || req.get("X-Device-Key")) return next();
   if (req.get("X-Requested-With") !== "CropMind") {
     return res.status(403).json({ message: "Missing CSRF header." });
   }

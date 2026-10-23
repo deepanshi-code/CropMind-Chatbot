@@ -11,6 +11,8 @@ const aiRouter = require("./routes/ai");
 const cropsRouter = require("./routes/crops");
 const telemetryRouter = require("./routes/telemetry");
 const insightsRouter = require("./routes/insights");
+const profileRouter = require("./routes/profile");
+const devicesRouter = require("./routes/devices");
 const { requireCsrfHeader } = require("./middleware/auth");
 
 const app = express();
@@ -62,6 +64,8 @@ app.use("/api/ai", aiRouter);
 app.use("/api/crops", cropsRouter);
 app.use("/api/telemetry", telemetryRouter);
 app.use("/api/insights", insightsRouter);
+app.use("/api/profile", profileRouter);
+app.use("/api/devices", devicesRouter);
 
 // Root path status check
 app.get("/", (req, res) => {
