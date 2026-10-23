@@ -84,7 +84,13 @@ app.get("/health", (req, res) => {
 // TRUST_PROXY: it must show your own public IP, not a Vercel/Render address.
 app.get("/api/health", (req, res) => {
   res.set("Cache-Control", "no-store");
-  res.status(200).json({ status: "OK", database: db.isMock() ? "in-memory" : "mongodb", clientIp: req.ip });
+  res.status(200).json({
+    status: "OK",
+    database: db.isMock() ? "in-memory" : "mongodb",
+    clientIp: req.ip,
+    // Render sets RENDER_GIT_COMMIT; shows which commit is live after a deploy.
+    commit: process.env.RENDER_GIT_COMMIT ? process.env.RENDER_GIT_COMMIT.slice(0, 7) : "local",
+  });
 });
 
 // Status check endpoint

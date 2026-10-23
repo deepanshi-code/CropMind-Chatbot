@@ -154,6 +154,8 @@ browser, including Safari, which blocks third-party cookies.
 `https://<your-vercel-domain>/api/health`: `clientIp` must equal your real public IP. If the
 hosting setup changes, set `TRUST_PROXY` to the new hop count.
 
+**Deploy check:** `/api/health` also shows `commit`, the first 7 characters of the commit Render is running.
+
 **Database check:** the same `/api/health` response shows `"database": "mongodb"` when Render is
 connected to Atlas. `"in-memory"` means `MONGO_URI` is missing or wrong and all data is lost on restart.
 
