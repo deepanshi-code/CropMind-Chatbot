@@ -15,9 +15,13 @@ const { requireCsrfHeader } = require("./middleware/auth");
 
 const app = express();
 app.disable("x-powered-by");
-// Number of proxies in front of the app (Render = 1; Vercel rewrite + Render may need 2).
-// Rate limits key on req.ip, so this must match the deployment or every user shares one IP.
-app.set("trust proxy", Number(process.env.TRUST_PROXY ?? 1));
+// Number of proxies in front of the app. Rate limits key on req.ip, so this must match the
+// deployment or every user shares one IP. Measured on this deployment (Oct 2026), browser
+// requests arrive as: client -> Vercel rewrite -> Cloudflare -> Render internal proxy = 4 hops.
+// Requests sent straight to the Render URL have fewer hops and can fake their IP; that only
+// weakens the per-IP limits, the per-account and per-user limits are unaffected.
+const DEFAULT_PROXY_HOPS = process.env.RENDER ? 4 : 1;
+app.set("trust proxy", Number(process.env.TRUST_PROXY ?? DEFAULT_PROXY_HOPS));
 // helmet's default "no-referrer" makes browsers send "Origin: null" on form posts, which the
 // CORS check below would reject; this policy still hides paths from other sites.
 app.use(helmet({ referrerPolicy: { policy: "strict-origin-when-cross-origin" } }));
@@ -76,16 +80,7 @@ app.get("/health", (req, res) => {
 // TRUST_PROXY: it must show your own public IP, not a Vercel/Render address.
 app.get("/api/health", (req, res) => {
   res.set("Cache-Control", "no-store");
-  // TEMP (remove after setting TRUST_PROXY): shows the proxy chain so the hop count can be chosen.
-  res.status(200).json({
-    status: "OK",
-    database: db.isMock() ? "in-memory" : "mongodb",
-    clientIp: req.ip,
-    forwardedFor: req.get("x-forwarded-for") || null,
-    realIp: req.get("x-real-ip") || null,
-    trueClientIp: req.get("true-client-ip") || null,
-    cfConnectingIp: req.get("cf-connecting-ip") || null,
-  });
+  res.status(200).json({ status: "OK", database: db.isMock() ? "in-memory" : "mongodb", clientIp: req.ip });
 });
 
 // Status check endpoint

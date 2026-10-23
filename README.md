@@ -146,9 +146,10 @@ browser, including Safari, which blocks third-party cookies.
 
 **Google Cloud Console:** the OAuth redirect URI is `https://<your-vercel-domain>/api/auth/google/callback`.
 
-**`TRUST_PROXY`:** rate limits are keyed on the client IP. Open `https://<your-vercel-domain>/api/health`
-and compare `clientIp` with your real public IP (e.g. from whatismyip.com). If it shows a
-Vercel/Render address instead, increase `TRUST_PROXY` by one and check again.
+**`TRUST_PROXY`:** rate limits are keyed on the client IP. On Render the default is 4 hops
+(browser → Vercel → Cloudflare → Render proxy, measured on this deployment). Check it at
+`https://<your-vercel-domain>/api/health`: `clientIp` must equal your real public IP. If the
+hosting setup changes, set `TRUST_PROXY` to the new hop count.
 
 **Database check:** the same `/api/health` response shows `"database": "mongodb"` when Render is
 connected to Atlas. `"in-memory"` means `MONGO_URI` is missing or wrong and all data is lost on restart.
