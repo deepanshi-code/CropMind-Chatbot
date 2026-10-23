@@ -76,7 +76,16 @@ app.get("/health", (req, res) => {
 // TRUST_PROXY: it must show your own public IP, not a Vercel/Render address.
 app.get("/api/health", (req, res) => {
   res.set("Cache-Control", "no-store");
-  res.status(200).json({ status: "OK", database: db.isMock() ? "in-memory" : "mongodb", clientIp: req.ip });
+  // TEMP (remove after setting TRUST_PROXY): shows the proxy chain so the hop count can be chosen.
+  res.status(200).json({
+    status: "OK",
+    database: db.isMock() ? "in-memory" : "mongodb",
+    clientIp: req.ip,
+    forwardedFor: req.get("x-forwarded-for") || null,
+    realIp: req.get("x-real-ip") || null,
+    trueClientIp: req.get("true-client-ip") || null,
+    cfConnectingIp: req.get("cf-connecting-ip") || null,
+  });
 });
 
 // Status check endpoint
