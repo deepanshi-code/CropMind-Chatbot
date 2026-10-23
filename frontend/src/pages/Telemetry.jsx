@@ -7,7 +7,7 @@ export default function Telemetry() {
     <div className="page telemetry-page">
       <div className="dashboard-header animate-fade-in">
         <h1>IoT Telemetry Logs & Soil Chemistry</h1>
-        <p>Real-time analytics and detailed diagnostics from farm telemetry nodes.</p>
+        <p>Telemetry stream and soil chemistry view. Readings shown here are simulated until real sensor nodes are connected.</p>
       </div>
 
       <div className="dashboard-content-layout" style={{ marginTop: "24px" }}>

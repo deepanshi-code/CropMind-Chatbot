@@ -7,7 +7,7 @@ export default function About() {
         <h1>About CropMind</h1>
         <p className="lead">
           CropMind is an advanced smart agricultural intelligence platform designed to 
-          empower modern farming decisions with technology. By connecting real-time local telemetry 
+          empower modern farming decisions with technology. By connecting local telemetry 
           with state-of-the-art Generative AI models, we deliver actionable insights directly to the fields.
         </p>
 
