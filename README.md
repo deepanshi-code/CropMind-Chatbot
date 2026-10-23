@@ -99,7 +99,7 @@ GOOGLE_CLIENT_SECRET=                         # (Optional: dev-only sandbox OAut
 DATA_GOV_API_KEY=                             # (Optional: free key from data.gov.in for live mandi prices)
 FRONTEND_URL=http://localhost:5173            # (The public URL users open; also used for OAuth callbacks)
 NODE_ENV=development                          # (Set to production on Render)
-TRUST_PROXY=1                                 # (Number of proxies in front of the backend, see Deployment)
+# TRUST_PROXY=4                               # (Optional: proxy hops; defaults to 4 on Render, see Deployment)
 ```
 Generate a strong `JWT_SECRET` with:
 ```bash
