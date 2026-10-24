@@ -77,28 +77,14 @@ export default function Dashboard() {
     }
   }, [notify, t]);
 
-  const displayName = user?.name || user?.email || "";
-
   return (
     <div className="page dashboard-page">
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       <div className="dashboard-header">
-        <div className="dashboard-title-row">
-          <div className="dashboard-title-col">
-            <h1>{t("dash.title")}</h1>
-            <p>{t("dash.subtitle")}</p>
-          </div>
-          {displayName && (
-            <div className="user-profile-card-header">
-              <div className="user-profile-avatar" aria-hidden="true">{displayName.substring(0, 2).toUpperCase()}</div>
-              <div className="user-profile-info">
-                <span className="user-profile-label">{t("dash.loggedInAs")}</span>
-                <span className="user-profile-email">{displayName}</span>
-              </div>
-            </div>
-          )}
-        </div>
+        {user?.name && <p className="eyebrow">{t("dash.greeting", { name: user.name })}</p>}
+        <h1>{t("dash.title")}</h1>
+        <p>{t("dash.subtitle")}</p>
       </div>
 
       {profile ? (

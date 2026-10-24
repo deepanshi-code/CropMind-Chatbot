@@ -77,15 +77,19 @@ const CropCard = memo(function CropCard({ crop, onDelete, onUpdate }) {
           {crop.notes && <div className="crop-notes"><dt className="visually-hidden">{t("dash.notes")}</dt><dd>{crop.notes}</dd></div>}
         </dl>
         <div className="crop-card-footer">
-          <Link to={`/advisor?crop=${encodeURIComponent(crop.id)}`} className="edit-button">{t("crop.askAdvisor")}</Link>
-          <button type="button" onClick={() => setIsEditing(true)} className="edit-button" aria-label={`${t("common.edit")} ${crop.name}`}>
-            {t("common.edit")}
-          </button>
-          {onDelete && (
-            <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="delete-button" aria-label={`${t("common.remove")} ${crop.name}`}>
-              {t("common.remove")}
+          <Link to={`/advisor?crop=${encodeURIComponent(crop.id)}`} className="text-link">
+            {t("crop.askAdvisor")} <span aria-hidden="true">→</span>
+          </Link>
+          <div className="crop-card-icons">
+            <button type="button" onClick={() => setIsEditing(true)} className="icon-button" aria-label={`${t("common.edit")} ${crop.name}`} title={t("common.edit")}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path></svg>
             </button>
-          )}
+            {onDelete && (
+              <button type="button" onClick={() => setIsDeleteModalOpen(true)} className="icon-button danger" aria-label={`${t("common.remove")} ${crop.name}`} title={t("common.remove")}>
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"></path></svg>
+              </button>
+            )}
+          </div>
         </div>
       </article>
 

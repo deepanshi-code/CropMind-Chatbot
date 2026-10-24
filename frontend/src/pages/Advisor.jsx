@@ -249,7 +249,11 @@ export default function Advisor() {
               <div className="form-group">
                 <label htmlFor="crop-photo">{t("adv.photo")} <span className="optional">({t("common.optional")})</span></label>
                 <div className="photo-upload">
-                  <input id="crop-photo" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} aria-describedby="photo-help" />
+                  <input id="crop-photo" className="file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} aria-describedby="photo-help" />
+                  <label htmlFor="crop-photo" className="btn-secondary file-button">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+                    {photo ? t("adv.changePhoto") : t("adv.addPhoto")}
+                  </label>
                   {photo && (
                     <>
                       <img src={photo.preview} alt="" className="photo-preview" />

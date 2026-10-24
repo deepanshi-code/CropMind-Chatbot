@@ -10,18 +10,18 @@ const initialTheme = () => {
   } catch {
     // storage unavailable
   }
-  return window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 };
 
-/** Theme switch; remembers the choice and otherwise follows the device setting. */
+/** Icon button that switches light/dark; remembers the choice, otherwise follows the device. */
 export default function ThemeToggle() {
   const { t } = useLanguage();
   const [theme, setTheme] = useState(initialTheme);
   const isDark = theme === "dark";
 
   useEffect(() => {
-    document.body.classList.toggle("light-theme", theme === "light");
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "light" ? "#f8fafc" : "#050b14");
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0f1712" : "#f6f5ef");
   }, [theme]);
 
   const toggle = () => {
@@ -34,19 +34,20 @@ export default function ThemeToggle() {
     }
   };
 
+  const label = isDark ? t("theme.light") : t("theme.dark");
   return (
-    <button type="button" onClick={toggle} className="theme-toggle" aria-label={isDark ? t("theme.light") : t("theme.dark")}>
+    <button type="button" onClick={toggle} className="icon-button theme-toggle" aria-label={label} title={label}>
       {isDark ? (
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
           <circle cx="12" cy="12" r="4"></circle>
           <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
         </svg>
       ) : (
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
         </svg>
       )}
-      <span>{isDark ? t("theme.light") : t("theme.dark")}</span>
+      <span className="theme-toggle-text">{label}</span>
     </button>
   );
 }
