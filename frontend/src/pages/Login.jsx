@@ -81,7 +81,7 @@ export default function Login() {
               <input
                 id="login-password"
                 type="password"
-                placeholder={isLogin ? "••••••••" : t("login.passwordHint")}
+                placeholder={isLogin ? undefined : t("login.passwordHint")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={isLogin ? undefined : 8}
