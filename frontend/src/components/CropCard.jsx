@@ -72,7 +72,7 @@ const CropCard = memo(function CropCard({ crop, onDelete, onUpdate }) {
           <div><dt>{t("crop.water")}</dt><dd>{t(`common.${crop.water.toLowerCase()}`)}</dd></div>
           {sownText && <div><dt>{t("crop.sown")}</dt><dd>{sownText}</dd></div>}
           {crop.areaAcres !== undefined && crop.areaAcres !== null && (
-            <div><dt>{t("crop.area")}</dt><dd>{t("crop.acres", { value: crop.areaAcres })}</dd></div>
+            <div><dt>{t("crop.area")}</dt><dd>{t(Number(crop.areaAcres) === 1 ? "crop.acre" : "crop.acres", { value: crop.areaAcres })}</dd></div>
           )}
           {crop.notes && <div className="crop-notes"><dt className="visually-hidden">{t("dash.notes")}</dt><dd>{crop.notes}</dd></div>}
         </dl>

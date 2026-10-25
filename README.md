@@ -1,6 +1,8 @@
 # CropMind - AI-Powered Smart Farming Assistant
 
-CropMind is an advanced smart agricultural intelligence platform designed to empower modern farming decisions. It combines a per-user crop catalog with a Gemini-powered agronomy advisor (text or photo, English or Hindi), a chat assistant, modelled local weather and soil-moisture data, and mandi prices. Connecting real in-field IoT sensors is planned work; the sensor log stream is currently simulated.
+CropMind is a farming assistant for Indian farmers. Each farmer keeps a private record of their crops and Soil Health Card, sees modelled soil moisture and a rain outlook for their district, and asks a Gemini-powered AI agronomist about crop problems by text, voice or leaf photo, in English or Hindi. The advice takes the farm profile (location, current weather, soil test, crop age) into account.
+
+> AI advice can be wrong. CropMind is a decision aid; confirm important decisions with your local Krishi Vigyan Kendra (KVK).
 
 ---
 
@@ -12,21 +14,28 @@ CropMind is an advanced smart agricultural intelligence platform designed to emp
 
 ## Screenshots
 
-### 1. Home / Landing Screen
-*A premium dark-themed cybernetic HUD dashboard greeting farmers with interactive guides.*
-![Home Screen](./screenshots/home.png)
+Screenshots of a local copy with demo data.
 
-### 2. Secure Portal Authentication
-*Registration and login page with Google OAuth (plus a sandbox simulator available only in local development).*
-![Authentication Portal](./screenshots/login.png)
+### Home
+![Home page](./screenshots/home.jpg)
 
-### 3. Smart Farming Dashboard HUD
-*Shows the user's crop catalog, local soil moisture and rain forecast, mandi prices and a simulated sensor log stream.*
-![Dashboard HUD](./screenshots/dashboard.png)
+### Farm dashboard
+*Modelled soil moisture and 3-day rain outlook for the saved district (Open-Meteo), the farmer's crops with their age, and their own Soil Health Card values.*
+![Farm dashboard](./screenshots/dashboard.png)
 
-### 4. AI Agronomist Diagnostic Advisor
-*Interactive crop symptom analysis generating organic treatment checklists, preventative measures, and customized NPK guidance.*
-![Diagnostic Advisor](./screenshots/advisor.png)
+### AI crop advisor
+*Pick a crop from your list, describe the symptoms and/or add a leaf photo, and choose the answer language.*
+![AI crop advisor](./screenshots/advisor.png)
+
+### My Farm
+*Farm location, Soil Health Card, language, sensor device keys, password, data download and account deletion.*
+![My Farm page](./screenshots/my-farm.png)
+
+### Sign up
+![Sign-up page](./screenshots/login.png)
+
+### On a phone, in Hindi
+<img src="./screenshots/mobile-hindi.png" alt="Dashboard on a phone in Hindi" width="320">
 
 ---
 
@@ -38,7 +47,9 @@ CropMind is an advanced smart agricultural intelligence platform designed to emp
 * **AI chat assistant**: conversation saved per user (survives reloads), uses the farm profile, English or Hindi replies, voice input.
 * **Sensors**: real devices post readings with their own revocable key (`X-Device-Key`). The demo stream only shows when switched on and is clearly labelled.
 * **Hindi and English interface**, remembered per account; light/dark theme that follows the device setting.
+* **Calm, readable design**: light-first theme with a matching dark mode (follows the device, remembered), one design system in a single stylesheet, Devanagari font for Hindi.
 * **Accessible and mobile-first**: collapsible menu, 44 px touch targets, visible keyboard focus, skip link, labelled forms, reduced-motion support, installable on phones (web app manifest).
+* **Reliable sign-up and login**: clear error messages instead of hidden browser tooltips, automatic login after sign-up, "show password", and automatic waiting/retrying while the free backend wakes up.
 * **Privacy**: plain-language privacy notice (English and Hindi), consent at sign-up, httpOnly session cookie, no tracking.
 
 ---
@@ -49,7 +60,7 @@ CropMind is an advanced smart agricultural intelligence platform designed to emp
 * **Framework**: React 19
 * **Build Tool**: Vite 7
 * **Routing**: React Router DOM 6
-* **Styling**: Vanilla CSS (TailwindCSS omitted for customizable grid layout and custom responsive theme animations)
+* **Styling**: one plain-CSS design system (`frontend/src/styles.css`) with colour tokens for light and dark themes
 
 ### Backend Engine
 * **Runtime**: Node.js
@@ -130,9 +141,9 @@ npm run dev
 ```bash
 npm test
 ```
-* **Backend** (`npm test -w backend`, Node's built-in test runner): 49 tests covering authentication, session revocation, CSRF, per-user data isolation, validation, profile, Soil Health Card, device keys, chat and diagnosis history, data export, account deletion, the farm context given to the AI, Gemini retries, weather mapping and production safety checks.
-* **Frontend** (`npm test -w frontend`, Vitest + Testing Library): 13 tests, including a check that every English string has a Hindi translation with the same placeholders.
-* **CI**: `.github/workflows/ci.yml` runs both suites, the production build and `npm audit` on every push and pull request.
+* **Backend** (`npm test -w backend`, Node's built-in test runner): 52 tests covering authentication, session revocation, CSRF, per-user data isolation, validation, profile, Soil Health Card, device keys, chat and diagnosis history, data export, account deletion, the farm context given to the AI, Gemini retries, weather mapping and production safety checks.
+* **Frontend** (`npm test -w frontend`, Vitest + Testing Library): 29 tests, including sign-up error handling, the wake-up/retry rules, and a check that every English string has a Hindi translation with the same placeholders.
+* **CI**: `.github/workflows/ci.yml` runs both suites, the production build and `npm audit` on every push and pull request. A failing audit usually means a new advisory was published for a dependency: run `npm audit fix`, test, and push.
 
 ---
 
@@ -158,6 +169,20 @@ hosting setup changes, set `TRUST_PROXY` to the new hop count.
 
 **Database check:** the same `/api/health` response shows `"database": "mongodb"` when Render is
 connected to Atlas. `"in-memory"` means `MONGO_URI` is missing or wrong and all data is lost on restart.
+
+**Free-plan sleep (important):** the free Render service sleeps after 15 minutes without traffic.
+While it sleeps, Render refuses requests that arrive through Vercel's shared proxy IPs with
+`429 Too Many Requests` and the header `X-Render-Routing: hibernate-rate-limited`, and does not
+wake up from them. CropMind handles this in three ways:
+1. The browser pings `https://<render-service>/health` directly (the visitor's own IP) on page
+   load, which wakes the service (`frontend/src/services/wake.js`; allowed in the CSP in `vercel.json`).
+2. The API client retries those refusals for about 70 seconds while showing a "server is waking
+   up" notice. Sign-up is retried safely (it checks whether the account was already created).
+3. `.github/workflows/keep-awake.yml` pings the backend every 10 minutes so it rarely sleeps
+   (about 744 of Render's 750 free instance hours per month). GitHub pauses scheduled workflows
+   after 60 days without commits; re-enable it in the Actions tab if needed.
+
+A paid Render instance does not sleep and avoids all of this.
 
 ---
 
@@ -272,7 +297,7 @@ CropMind/
 
 ## Known Limitations
 
-* **Render Server Spin-Down (Cold Start)**: the free Render backend sleeps after 15 minutes idle; the first request can take 30–60 seconds. The app shows a "waking up" notice meanwhile.
+* **Free hosting**: the free Render backend can sleep (see "Free-plan sleep" under Deployment); the first request after a quiet period can take up to a minute. The app waits and shows a notice meanwhile.
 * **MongoDB M0 free tier**: 512 MB storage, and the cluster pauses after long inactivity (resume it in Atlas).
 * **Field data is modelled, not measured**: soil moisture and rain come from Open-Meteo's model for the saved area. Real field readings need your own sensor devices.
 * **AI accuracy not yet measured**: the evaluation harness exists but needs a labelled case set from published sources. Advice should be confirmed with a KVK or agriculture officer.
@@ -288,3 +313,4 @@ CropMind/
 * **Mentorship & Evaluation**: Developed for the TBI-GEU Internship Capstone.
 * **AI Engine**: Powered by Google DeepMind's Gemini API developer sandbox models.
 * **Tech Guidelines**: Implemented in accordance with the Advanced Agentic Coding practices.
+* **AI assistance**: parts of the security hardening, redesign, tests and documentation were developed with Claude Code (Anthropic). Those commits are marked `Co-Authored-By: Claude` in the git history.
