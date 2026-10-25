@@ -87,9 +87,10 @@ const keyBy = {
 
 /**
  * @param {string} name   unique store prefix
- * @param {object} opts   { windowMs, max, message, key: "ip" | "user" | "email" }
+ * @param {object} opts   { windowMs, max, message, key: "ip" | "user" | "email", skipFailed }
+ *                        skipFailed: only successful (2xx/3xx) requests count toward the limit
  */
-const makeLimiter = (name, { windowMs, max, message, key = "ip" }) => rateLimit({
+const makeLimiter = (name, { windowMs, max, message, key = "ip", skipFailed = false }) => rateLimit({
   windowMs,
   limit: max,
   message: { message },
@@ -97,6 +98,7 @@ const makeLimiter = (name, { windowMs, max, message, key = "ip" }) => rateLimit(
   legacyHeaders: false,
   keyGenerator: keyBy[key],
   store: new HybridStore(name),
+  skipFailedRequests: skipFailed,
   // Fail open if the database hiccups, rather than locking every user out.
   passOnStoreError: true,
 });

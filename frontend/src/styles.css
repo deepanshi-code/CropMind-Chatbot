@@ -1546,3 +1546,30 @@ select {
   body { background: #ffffff; color: #000000; }
   .card { box-shadow: none; border-color: #cccccc; }
 }
+
+/* ---------- Login form helpers ---------- */
+.password-field { position: relative; }
+.password-field input { padding-right: 76px; }
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  min-height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--primary);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.password-toggle:hover { background: var(--primary-soft); }
+.field-hint { margin-top: 6px; font-size: 0.85rem; color: var(--text-muted); }
+.slow-hint { text-align: center; margin-top: 10px; }
+input[aria-invalid="true"] { border-color: var(--danger); }
+.consent-row.has-error { color: var(--danger); }
+.consent-row.has-error input { outline: 2px solid var(--danger); outline-offset: 2px; }
+.error-message:focus { outline: none; box-shadow: var(--focus); }

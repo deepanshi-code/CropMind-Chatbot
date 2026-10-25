@@ -33,9 +33,11 @@ const loginAccountLimiter = makeLimiter("login-account", {
   windowMs: FIFTEEN_MIN, max: 10, key: "email",
   message: "Too many login attempts for this account, please try again in 15 minutes.",
 });
+// Counts only accounts actually created, so typos and validation errors on a shared
+// network (college or village Wi-Fi) don't lock other people out.
 const registerLimiter = makeLimiter("register-ip", {
-  windowMs: 60 * 60 * 1000, max: 10, key: "ip",
-  message: "Too many registrations from this network, please try again in an hour.",
+  windowMs: 60 * 60 * 1000, max: 10, key: "ip", skipFailed: true,
+  message: "Too many new accounts from this network, please try again in an hour.",
 });
 
 // Compared against when the email is unknown, so both failure cases take the same time
@@ -120,6 +122,8 @@ router.post("/register", registerLimiter, validate(schemas.register), async (req
         authProvider: "password", privacyAcceptedAt: new Date(), createdAt: new Date(),
       };
       db.setMockUsers([newUser, ...users]);
+      // Sign the new user straight in instead of sending them back to the login form.
+      issueSession(res, newUser);
       return res.status(201).json({
         message: "User registered successfully (In-Memory).",
         user: { id: newUser.id, email: newUser.email }
@@ -130,6 +134,7 @@ router.post("/register", registerLimiter, validate(schemas.register), async (req
       return res.status(400).json({ message: "Email is already registered." });
     }
     const user = await User.create({ email, password: hashedPassword, authProvider: "password", privacyAcceptedAt: new Date() });
+    issueSession(res, user);
     res.status(201).json({
       message: "User registered successfully.",
       user: { id: user._id, email: user.email }

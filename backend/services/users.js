@@ -16,6 +16,9 @@ const toProfile = (user) => {
       profile[field] = value && typeof value.toObject === "function" ? value.toObject() : value;
     }
   }
+  // MongoDB returns {} for an unset nested object; treat that as "not set".
+  if (profile.location && !Number.isFinite(profile.location.lat)) delete profile.location;
+  if (profile.soilTest && Object.keys(profile.soilTest).length === 0) delete profile.soilTest;
   profile.authProvider = profile.authProvider || "password";
   profile.language = profile.language || "en";
   return profile;

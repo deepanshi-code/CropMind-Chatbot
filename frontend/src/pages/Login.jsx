@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { loginUser, registerUser, googleLoginUrl, errorMessage } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../i18n/LanguageContext";
 
 const KNOWN_ERRORS = ["OAuthCancel", "GoogleNotConfigured", "SessionExpired", "OAuthFailed"];
+const MIN_PASSWORD = 8;
+// The free backend can take up to a minute to wake up; say so instead of looking stuck.
+const SLOW_REQUEST_MS = 5000;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
   const navigate = useNavigate();
@@ -15,10 +19,13 @@ export default function Login() {
   const [mode, setMode] = useState(searchParams.get("mode") === "register" ? "register" : "login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [acceptPrivacy, setAcceptPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slow, setSlow] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [fieldError, setFieldError] = useState(null); // "email" | "password" | "consent"
+  const errorRef = useRef(null);
 
   // Already signed in (e.g. after the Google OAuth redirect set the session cookie)
   useEffect(() => {
@@ -30,35 +37,62 @@ export default function Login() {
     if (code) setErrorMsg(KNOWN_ERRORS.includes(code) ? t(`login.error.${code}`) : t("login.error.generic"));
   }, [searchParams, t]);
 
+  // Move screen readers and small screens to the message when one appears.
+  useEffect(() => {
+    if (errorMsg) errorRef.current?.focus();
+  }, [errorMsg]);
+
+  const isLogin = mode === "login";
+
+  const showError = (message, field = null) => {
+    setErrorMsg(message);
+    setFieldError(field);
+  };
+
+  // Our own checks with visible messages. The browser's built-in validation tooltips are easy
+  // to miss on phones, which made "Create Account" look like it did nothing.
+  const validate = () => {
+    if (!EMAIL_PATTERN.test(email.trim())) return showError(t("login.invalidEmail"), "email"), false;
+    if (!password) return showError(t("login.passwordRequired"), "password"), false;
+    if (!isLogin && password.length < MIN_PASSWORD) return showError(t("login.passwordTooShort"), "password"), false;
+    if (!isLogin && !acceptPrivacy) return showError(t("login.consentRequired"), "consent"), false;
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
-    setSuccessMsg("");
-    if (mode === "register" && !acceptPrivacy) {
-      setErrorMsg(t("login.consentRequired"));
-      return;
-    }
+    setFieldError(null);
+    if (!validate()) return;
+
     setLoading(true);
+    const slowTimer = setTimeout(() => setSlow(true), SLOW_REQUEST_MS);
     try {
-      if (mode === "login") {
-        await loginUser(email, password);
-        // The server set the httpOnly session cookie; load the user into the auth context.
-        await refresh();
-        navigate("/dashboard", { replace: true });
+      if (isLogin) {
+        await loginUser(email.trim(), password);
       } else {
-        await registerUser(email, password, true);
-        setSuccessMsg(t("login.registered"));
-        setMode("login");
-        setPassword("");
+        // The server signs the new account in straight away.
+        await registerUser(email.trim(), password, true);
       }
+      // The server set the httpOnly session cookie; load the user into the auth context.
+      await refresh();
+      navigate("/dashboard", { replace: true });
     } catch (err) {
-      setErrorMsg(errorMessage(err, t("login.error.generic")));
+      const status = err.response?.status;
+      const fallback = !err.response ? t("login.error.network") : t("login.error.generic");
+      showError(errorMessage(err, fallback), status === 400 && /email/i.test(err.response?.data?.message || "") ? "email" : null);
     } finally {
+      clearTimeout(slowTimer);
+      setSlow(false);
       setLoading(false);
     }
   };
 
-  const isLogin = mode === "login";
+  const switchMode = () => {
+    setMode(isLogin ? "register" : "login");
+    setErrorMsg("");
+    setFieldError(null);
+  };
 
   return (
     <div className="page login-page">
@@ -67,32 +101,56 @@ export default function Login() {
           <h1>{isLogin ? t("login.welcome") : t("login.create")}</h1>
           <p className="login-subtitle">{isLogin ? t("login.subtitleLogin") : t("login.subtitleRegister")}</p>
 
-          {errorMsg && <div className="state-message error-message" role="alert">{errorMsg}</div>}
-          {successMsg && <div className="state-message success-message" role="status">{successMsg}</div>}
+          {errorMsg && (
+            <div className="state-message error-message" role="alert" tabIndex={-1} ref={errorRef}>{errorMsg}</div>
+          )}
 
-          <form onSubmit={handleSubmit} noValidate={false}>
+          <form onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label htmlFor="login-email">{t("login.email")}</label>
-              <input id="login-email" type="email" placeholder="farmer@example.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
+              <input
+                id="login-email"
+                type="email"
+                inputMode="email"
+                placeholder="farmer@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
+                aria-invalid={fieldError === "email"}
+              />
             </div>
 
             <div className="form-group">
               <label htmlFor="login-password">{t("login.password")}</label>
-              <input
-                id="login-password"
-                type="password"
-                placeholder={isLogin ? undefined : t("login.passwordHint")}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                minLength={isLogin ? undefined : 8}
-                autoComplete={isLogin ? "current-password" : "new-password"}
-                required
-              />
+              <div className="password-field">
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={isLogin ? undefined : t("login.passwordHint")}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={isLogin ? "current-password" : "new-password"}
+                  aria-invalid={fieldError === "password"}
+                  aria-describedby={isLogin ? undefined : "password-hint"}
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-pressed={showPassword}
+                  aria-controls="login-password"
+                >
+                  {showPassword ? t("login.hidePassword") : t("login.showPassword")}
+                </button>
+              </div>
+              {!isLogin && <p id="password-hint" className="field-hint">{t("login.passwordHint")}</p>}
             </div>
 
             {!isLogin && (
-              <label className="consent-row">
-                <input type="checkbox" checked={acceptPrivacy} onChange={(e) => setAcceptPrivacy(e.target.checked)} required />
+              <label className={`consent-row ${fieldError === "consent" ? "has-error" : ""}`}>
+                <input type="checkbox" checked={acceptPrivacy} onChange={(e) => setAcceptPrivacy(e.target.checked)} aria-invalid={fieldError === "consent"} />
                 <span>{t("login.consent")} <Link to="/privacy" target="_blank" rel="noopener">{t("login.consentLink")}</Link></span>
               </label>
             )}
@@ -102,6 +160,7 @@ export default function Login() {
                 ? (isLogin ? t("login.loggingIn") : t("login.registering"))
                 : (isLogin ? t("login.submitLogin") : t("login.submitRegister"))}
             </button>
+            {slow && <p className="field-hint slow-hint" role="status">{t("login.slow")}</p>}
           </form>
 
           <div className="divider-with-text"><span>{t("login.or")}</span></div>
@@ -117,7 +176,7 @@ export default function Login() {
           <div className="login-footer">
             <p>
               {isLogin ? t("login.newHere") : t("login.haveAccount")}{" "}
-              <button type="button" className="link-button" onClick={() => { setMode(isLogin ? "register" : "login"); setErrorMsg(""); }}>
+              <button type="button" className="link-button" onClick={switchMode}>
                 {isLogin ? t("login.registerHere") : t("login.loginHere")}
               </button>
             </p>

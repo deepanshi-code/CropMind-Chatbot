@@ -143,3 +143,30 @@ test("farm context descriptions", () => {
     "24°C, humidity 80%, modelled topsoil moisture 30%, rain outlook 2026-12-01: 60% chance, 3 mm"
   );
 });
+
+test("registration signs the new user in immediately", async () => {
+  const c = new Client(server.baseUrl);
+  const r = await c.post("/api/auth/register", { email: "instant@example.com", password: "instant-pass-1", acceptPrivacy: true });
+  assert.equal(r.status, 201);
+  assert.ok(c.cookie.startsWith("cropmind_session="), "session cookie set on sign-up");
+  const me = await c.get("/api/auth/me");
+  assert.equal(me.status, 200);
+  assert.equal(me.data.user.email, "instant@example.com");
+});
+
+test("failed sign-up attempts do not use up the sign-up limit", async () => {
+  const c = new Client(server.baseUrl);
+  for (let i = 0; i < 12; i++) {
+    const bad = await c.post("/api/auth/register", { email: `typo${i}@example.com`, password: "short", acceptPrivacy: true });
+    assert.equal(bad.status, 400);
+  }
+  const ok = await c.post("/api/auth/register", { email: "after-typos@example.com", password: "long-enough-1", acceptPrivacy: true });
+  assert.equal(ok.status, 201);
+});
+
+test("a new user has no location until one is chosen (no empty {} from the database)", async () => {
+  const c = await registerAndLogin(server.baseUrl, "fresh-profile@example.com");
+  const profile = await c.get("/api/profile");
+  assert.equal(profile.data.location, undefined);
+  assert.equal(profile.data.soilTest, undefined);
+});

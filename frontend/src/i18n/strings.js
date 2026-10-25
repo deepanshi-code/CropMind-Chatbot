@@ -87,6 +87,13 @@ const en = {
   "login.error.SessionExpired": "Your session expired. Please log in again.",
   "login.error.OAuthFailed": "Google sign-in failed. Please try again.",
   "login.error.generic": "Login failed. Please try again.",
+  "login.error.network": "Could not reach the server. Check your internet connection and try again.",
+  "login.invalidEmail": "Please enter a valid email address, like name@example.com.",
+  "login.passwordRequired": "Please enter your password.",
+  "login.passwordTooShort": "Your password must have at least 8 characters.",
+  "login.showPassword": "Show",
+  "login.hidePassword": "Hide",
+  "login.slow": "Still working… the server may be waking up, which can take up to a minute.",
 
   // Dashboard
   "dash.title": "Farm Dashboard",
@@ -384,6 +391,13 @@ const hi = {
   "login.error.SessionExpired": "आपका सत्र समाप्त हो गया। कृपया फिर से लॉगिन करें।",
   "login.error.OAuthFailed": "Google लॉगिन नहीं हो सका। कृपया फिर से कोशिश करें।",
   "login.error.generic": "लॉगिन नहीं हो सका। कृपया फिर से कोशिश करें।",
+  "login.error.network": "सर्वर से संपर्क नहीं हो सका। अपना इंटरनेट कनेक्शन जाँचें और फिर से कोशिश करें।",
+  "login.invalidEmail": "कृपया सही ईमेल पता लिखें, जैसे name@example.com",
+  "login.passwordRequired": "कृपया अपना पासवर्ड लिखें।",
+  "login.passwordTooShort": "पासवर्ड में कम से कम 8 अक्षर होने चाहिए।",
+  "login.showPassword": "दिखाएँ",
+  "login.hidePassword": "छिपाएँ",
+  "login.slow": "काम चल रहा है… सर्वर चालू हो रहा है, इसमें एक मिनट तक लग सकता है।",
 
   "dash.title": "खेत डैशबोर्ड",
   "dash.subtitle": "आपकी फ़सलें, स्थानीय हालात और मिट्टी की सेहत, एक ही जगह।",
