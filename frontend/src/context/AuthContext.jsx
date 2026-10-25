@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { getCurrentUser, logoutUser } from "../services/api";
+import { wakeBackend } from "../services/wake";
 import { useLanguage } from "../i18n/LanguageContext";
 
 // If the first session check takes longer than this, the free-tier server is probably cold-starting.
@@ -42,6 +43,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // The API client reports when it is waiting for the sleeping backend (see services/wake.js).
+  useEffect(() => {
+    const onWaking = () => setWaking(true);
+    const onAwake = () => setWaking(false);
+    window.addEventListener("backend-waking", onWaking);
+    window.addEventListener("backend-awake", onAwake);
+    return () => {
+      window.removeEventListener("backend-waking", onWaking);
+      window.removeEventListener("backend-awake", onAwake);
+    };
+  }, []);
+
   useEffect(() => {
     // Older versions kept the JWT in localStorage; remove any leftover copy.
     try {
@@ -49,6 +62,8 @@ export function AuthProvider({ children }) {
     } catch {
       // storage unavailable
     }
+    // Start waking the free backend from the visitor's own IP while the page loads.
+    wakeBackend();
     refresh();
     // The API client fires this when a request comes back 401 (expired or revoked session).
     window.addEventListener("auth-change", refresh);

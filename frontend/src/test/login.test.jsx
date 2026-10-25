@@ -16,6 +16,14 @@ vi.mock("../services/api", () => ({
 vi.mock("../context/AuthContext", () => ({
   useAuth: () => ({ user: null, refresh }),
 }));
+// Real retry rules, but no real waiting or network pings in tests.
+vi.mock("../services/wake", async (importOriginal) => ({
+  ...(await importOriginal()),
+  wakeBackend: vi.fn(),
+  sleep: () => Promise.resolve(),
+}));
+
+const gatewayTimeout = { response: { status: 504, headers: {}, data: "An error occurred with your deployment" } };
 
 const { default: Login } = await import("../pages/Login");
 
@@ -39,6 +47,36 @@ describe("Register", () => {
     expect(registerUser).toHaveBeenCalledWith("farmer@example.com", "long-enough-1", true);
     expect(refresh).toHaveBeenCalled();
     expect(loginUser).not.toHaveBeenCalled();
+  });
+
+  it("if the server times out while waking, checks whether the account was created before retrying", async () => {
+    registerUser.mockRejectedValueOnce(gatewayTimeout);
+    loginUser.mockResolvedValueOnce({}); // the first attempt did create the account
+    renderWithProviders(<Login />, { route: "/login?mode=register" });
+    await fillRegister();
+    expect(registerUser).toHaveBeenCalledTimes(1);
+    expect(loginUser).toHaveBeenCalledWith("farmer@example.com", "long-enough-1");
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("creates the account on retry when the first attempt never reached the server", async () => {
+    registerUser.mockRejectedValueOnce(gatewayTimeout).mockResolvedValueOnce({});
+    loginUser.mockRejectedValueOnce({ response: { status: 401, headers: {}, data: { message: "Invalid email or password." } } });
+    renderWithProviders(<Login />, { route: "/login?mode=register" });
+    await fillRegister();
+    expect(registerUser).toHaveBeenCalledTimes(2);
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("says the server is starting (not \"Login failed\") if it stays unreachable", async () => {
+    registerUser.mockRejectedValue(gatewayTimeout);
+    loginUser.mockRejectedValue(gatewayTimeout);
+    renderWithProviders(<Login />, { route: "/login?mode=register" });
+    await fillRegister();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("server is still starting up");
+    expect(alert).not.toHaveTextContent("Login failed");
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("shows a visible message (not a hidden browser tooltip) when the privacy box is not ticked", async () => {

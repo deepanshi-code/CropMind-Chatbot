@@ -1,4 +1,5 @@
 import axios from "axios";
+import { isWakeRetryable, wakeBackend, retryDelay, sleep, MAX_WAKE_RETRIES } from "./wake";
 
 // Always same-origin (Vite dev proxy / Vercel rewrite) so the httpOnly session cookie is first-party.
 // A cross-site API URL would make browsers drop the cookie, so VITE_API_URL is intentionally not used.
@@ -13,6 +14,30 @@ const api = axios.create({
     "X-Requested-With": "CropMind"
   }
 });
+
+// While the free backend wakes up, retry instead of failing (see wake.js), and let the app
+// show the "server is waking up" notice. The 401 handling below runs once retries are over.
+api.interceptors.response.use(
+  (response) => {
+    if (response.config?.__wakeAttempt) window.dispatchEvent(new Event("backend-awake"));
+    return response;
+  },
+  async (error) => {
+    const config = error.config;
+    if (config && isWakeRetryable(error)) {
+      const attempt = config.__wakeAttempt || 0;
+      if (attempt < MAX_WAKE_RETRIES) {
+        config.__wakeAttempt = attempt + 1;
+        window.dispatchEvent(new Event("backend-waking"));
+        wakeBackend();
+        await sleep(retryDelay(attempt));
+        return api.request(config);
+      }
+    }
+    if (config?.__wakeAttempt) window.dispatchEvent(new Event("backend-awake"));
+    return Promise.reject(error);
+  }
+);
 
 // On an expired or revoked session, tell the app and send the user to the login page.
 // /auth/me is excluded: a 401 there just means "not logged in" (e.g. on the Home page).

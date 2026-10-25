@@ -3,12 +3,58 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { loginUser, registerUser, googleLoginUrl, errorMessage } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import { useLanguage } from "../i18n/LanguageContext";
+import { isBackendUnavailable, wakeBackend, retryDelay, sleep } from "../services/wake";
 
 const KNOWN_ERRORS = ["OAuthCancel", "GoogleNotConfigured", "SessionExpired", "OAuthFailed"];
 const MIN_PASSWORD = 8;
 // The free backend can take up to a minute to wake up; say so instead of looking stuck.
 const SLOW_REQUEST_MS = 5000;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const SERVER_RETRIES = 2;
+
+/** Retries a request that failed because the backend was asleep/unreachable. */
+async function withServerRetries(request) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await request();
+    } catch (err) {
+      if (!isBackendUnavailable(err) || attempt >= SERVER_RETRIES) throw err;
+      wakeBackend();
+      await sleep(retryDelay(attempt + 3));
+    }
+  }
+}
+
+/**
+ * Sign-up that is safe when the server is waking up. If an attempt fails with a gateway or
+ * network error we cannot know whether the account was created, so we first try to log in
+ * with the same details; only if that says "wrong email or password" do we try creating again.
+ * The server signs a new account in straight away.
+ */
+async function createAccount(email, password) {
+  let lastError;
+  for (let attempt = 0; attempt <= SERVER_RETRIES; attempt++) {
+    try {
+      return await registerUser(email, password, true);
+    } catch (err) {
+      lastError = err;
+      const alreadyExists = err.response?.status === 400 && /already registered/i.test(err.response?.data?.message || "");
+      // A previous attempt in this same submit probably created the account.
+      if (alreadyExists && attempt > 0) return loginUser(email, password);
+      if (!isBackendUnavailable(err)) throw err;
+    }
+    wakeBackend();
+    await sleep(retryDelay(attempt + 3));
+    try {
+      return await loginUser(email, password);
+    } catch (err) {
+      if (err.response?.status !== 401 && !isBackendUnavailable(err)) throw err;
+      lastError = err.response?.status === 401 ? lastError : err;
+    }
+  }
+  throw lastError;
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -69,18 +115,20 @@ export default function Login() {
     const slowTimer = setTimeout(() => setSlow(true), SLOW_REQUEST_MS);
     try {
       if (isLogin) {
-        await loginUser(email.trim(), password);
+        await withServerRetries(() => loginUser(email.trim(), password));
       } else {
-        // The server signs the new account in straight away.
-        await registerUser(email.trim(), password, true);
+        await createAccount(email.trim(), password);
       }
       // The server set the httpOnly session cookie; load the user into the auth context.
       await refresh();
       navigate("/dashboard", { replace: true });
     } catch (err) {
       const status = err.response?.status;
-      const fallback = !err.response ? t("login.error.network") : t("login.error.generic");
-      showError(errorMessage(err, fallback), status === 400 && /email/i.test(err.response?.data?.message || "") ? "email" : null);
+      let fallback = isLogin ? t("login.error.generic") : t("login.error.registerGeneric");
+      if (isBackendUnavailable(err)) fallback = err.response ? t("login.error.serverAsleep") : t("login.error.network");
+      // Only show the server's own message when it sent one (proxy error pages have none).
+      const message = isBackendUnavailable(err) ? fallback : errorMessage(err, fallback);
+      showError(message, status === 400 && /email/i.test(err.response?.data?.message || "") ? "email" : null);
     } finally {
       clearTimeout(slowTimer);
       setSlow(false);
