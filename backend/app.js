@@ -77,6 +77,10 @@ app.get("/", (req, res) => {
 
 // Health check endpoint
 app.get("/health", (req, res) => {
+  // The frontend pings this directly from the visitor's browser to wake the free instance;
+  // allow that cross-origin read (helmet defaults to same-origin). It exposes nothing private.
+  res.set("Cross-Origin-Resource-Policy", "cross-origin");
+  res.set("Cache-Control", "no-store");
   res.status(200).json({ status: "OK", timestamp: new Date() });
 });
 
